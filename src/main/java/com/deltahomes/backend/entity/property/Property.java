@@ -8,6 +8,8 @@ import com.deltahomes.backend.entity.user.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 
@@ -72,7 +74,6 @@ public class Property extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "readiness", length = 20, nullable = false)
     private Readiness readiness;
-
-    @Column(name = "features", columnDefinition = "JSONB DEFAULT '{}'")
+    @JdbcTypeCode(SqlTypes.JSON)    @Column(name = "features", columnDefinition = "JSONB DEFAULT '{}'")
     private String features;
 }

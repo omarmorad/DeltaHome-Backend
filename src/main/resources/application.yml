@@ -8,7 +8,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/deltahomes}
     username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
+    password: ${DB_PASSWORD:00}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 20
@@ -18,7 +18,9 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      # DEV only: Hibernate creates/updates the schema. Switch to 'validate' once
+      # Flyway migrations under db/migration are in place (see flyway below).
+      ddl-auto: none
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -30,7 +32,8 @@ spring:
     open-in-view: false
 
   flyway:
-    enabled: true
+    # Disabled until migration scripts are written. Re-enable together with ddl-auto: validate.
+    enabled: false
     locations: classpath:db/migration
     baseline-on-migrate: true
 
@@ -79,13 +82,27 @@ storage:
 # JWT
 jwt:
   secret: ${JWT_SECRET:dHlwZS5hY2Nlc3MtdG9rZW4uZXhhbXBsZS5jb20uZGVsdGFob21lcy5iYWNrZW5k}
-  expiration-ms: 86400000
+  expiration-ms: 86400000          # access token: 24h
+  refresh-expiration-ms: 604800000 # refresh token: 7 days
 
 # App
 app:
   base-url: ${APP_BASE_URL:http://localhost:8080}
   cors:
-    allowed-origins: ${CORS_ORIGINS:*}
+    # NOTE: wildcard (*) cannot be combined with credentials in CORS — keep an explicit origin.
+    allowed-origins: ${CORS_ORIGINS:http://localhost:3000}
+  otp:
+    expiry-minutes: 5
+    max-attempts: 5
+    max-sends-per-window: 5        # per phone + purpose per 15 min
+    resend-cooldown-seconds: 60
+  admin:
+    # Permanent bootstrap admin account. The account is auto-created on startup
+    # and `permanent-otp` is always accepted for this phone, for any purpose.
+    phone: ${ADMIN_PHONE:01026962089}
+    name: ${ADMIN_NAME:Delta Admin}
+    password: ${ADMIN_PASSWORD:admin123}
+    permanent-otp: ${ADMIN_PERMANENT_OTP:112231}
 
 logging:
   level:

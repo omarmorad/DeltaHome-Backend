@@ -7,6 +7,8 @@ import com.deltahomes.backend.entity.user.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Getter
 @Setter
@@ -28,6 +30,7 @@ public class Report extends BaseEntity {
     @Column(name = "reason", length = 255, nullable = false)
     private String reason;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "evidence_urls", columnDefinition = "JSONB")
     private String evidenceUrls;
 

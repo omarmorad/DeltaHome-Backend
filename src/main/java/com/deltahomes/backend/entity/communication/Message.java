@@ -6,6 +6,8 @@ import com.deltahomes.backend.entity.user.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Getter
 @Setter
@@ -31,6 +33,7 @@ public class Message extends BaseEntity {
     @Column(name = "media_url", length = 255)
     private String mediaUrl;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "payload", columnDefinition = "JSONB")
     private String payload;
 }

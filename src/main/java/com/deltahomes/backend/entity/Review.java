@@ -6,6 +6,8 @@ import com.deltahomes.backend.entity.user.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Getter
 @Setter
@@ -30,6 +32,7 @@ public class Review extends BaseEntity {
     @Column(name = "comment", columnDefinition = "TEXT")
     private String comment;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "images", columnDefinition = "JSONB")
     private String images;
 

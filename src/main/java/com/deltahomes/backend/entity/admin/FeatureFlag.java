@@ -4,6 +4,8 @@ import com.deltahomes.backend.entity.base.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Getter
 @Setter
@@ -17,6 +19,7 @@ public class FeatureFlag extends BaseEntity {
     @Column(name = "is_enabled", nullable = false)
     private Boolean isEnabled = false;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "rollout_scope", columnDefinition = "JSONB")
     private String rolloutScope;
 }
