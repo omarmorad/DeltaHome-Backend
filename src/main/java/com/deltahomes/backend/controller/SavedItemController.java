@@ -1,18 +1,20 @@
 package com.deltahomes.backend.controller;
 
+import com.deltahomes.backend.dto.common.PaginatedResponse;
 import com.deltahomes.backend.dto.social.SocialDtos;
 import com.deltahomes.backend.entity.enums.EntityType;
 import com.deltahomes.backend.entity.user.User;
 import com.deltahomes.backend.exception.BusinessException;
 import com.deltahomes.backend.repository.UserRepository;
 import com.deltahomes.backend.service.SavedItemService;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -47,10 +49,11 @@ public class SavedItemController {
     }
 
     @GetMapping
-    public ResponseEntity<List<SocialDtos.SavedItemResponse>> listSaved(
+    public ResponseEntity<PaginatedResponse<SocialDtos.SavedItemResponse>> listSaved(
             @AuthenticationPrincipal UserDetails principal,
-            @RequestParam(required = false) EntityType entityType) {
-        return ResponseEntity.ok(savedItemService.listSaved(currentUser(principal), entityType));
+            @RequestParam(required = false) EntityType entityType,
+            @PageableDefault(size = 20) Pageable pageable) {
+        return ResponseEntity.ok(savedItemService.listSaved(currentUser(principal), entityType, pageable));
     }
 
     private User currentUser(UserDetails principal) {
