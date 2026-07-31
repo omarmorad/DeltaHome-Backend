@@ -17,7 +17,6 @@ import java.util.UUID;
 public abstract class BaseEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
@@ -28,4 +27,16 @@ public abstract class BaseEntity {
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    /**
+     * Assigned-or-auto id generation: a caller may pre-assign a deterministic
+     * id (used by the demo seeder for idempotency); otherwise a random UUID is
+     * generated before insert, preserving the previous @GeneratedValue behavior.
+     */
+    @PrePersist
+    void prePersist() {
+        if (id == null) {
+            id = UUID.randomUUID();
+        }
+    }
 }
