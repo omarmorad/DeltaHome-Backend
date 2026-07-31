@@ -1,9 +1,17 @@
 package com.deltahomes.backend.controller;
 
+import com.deltahomes.backend.dto.common.PaginatedResponse;
+import com.deltahomes.backend.dto.summary.AppointmentSummary;
 import com.deltahomes.backend.entity.communication.Appointment;
 import com.deltahomes.backend.entity.enums.AppointmentStatus;
+import com.deltahomes.backend.entity.user.User;
 import com.deltahomes.backend.service.AppointmentService;
+import com.deltahomes.backend.service.UserContext;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -14,9 +22,20 @@ import java.util.UUID;
 public class AppointmentController {
 
     private final AppointmentService appointmentService;
+    private final UserContext userContext;
 
-    public AppointmentController(AppointmentService appointmentService) {
+    public AppointmentController(AppointmentService appointmentService, UserContext userContext) {
         this.appointmentService = appointmentService;
+        this.userContext = userContext;
+    }
+
+    @GetMapping
+    public ResponseEntity<PaginatedResponse<AppointmentSummary>> index(
+            @AuthenticationPrincipal UserDetails principal,
+            @RequestParam(required = false) AppointmentStatus status,
+            @PageableDefault(size = 20) Pageable pageable) {
+        User user = userContext.currentUser(principal);
+        return ResponseEntity.ok(appointmentService.index(user, status, pageable));
     }
 
     @PostMapping
