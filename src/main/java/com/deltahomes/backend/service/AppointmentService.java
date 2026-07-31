@@ -1,10 +1,16 @@
 package com.deltahomes.backend.service;
 
+import com.deltahomes.backend.dto.common.PaginatedResponse;
+import com.deltahomes.backend.dto.summary.AppointmentSummary;
 import com.deltahomes.backend.entity.communication.Appointment;
 import com.deltahomes.backend.entity.enums.AppointmentStatus;
+import com.deltahomes.backend.entity.user.User;
 import com.deltahomes.backend.exception.BusinessException;
 import com.deltahomes.backend.exception.ResourceNotFoundException;
 import com.deltahomes.backend.repository.AppointmentRepository;
+import com.deltahomes.backend.util.PageUtils;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +23,15 @@ public class AppointmentService {
 
     public AppointmentService(AppointmentRepository appointmentRepository) {
         this.appointmentRepository = appointmentRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public PaginatedResponse<AppointmentSummary> index(User user, AppointmentStatus status, Pageable pageable) {
+        Page<AppointmentSummary> page = appointmentRepository.searchIndex(
+                user.getId(),
+                status == null ? null : status.name(),
+                PageUtils.normalizeSort(pageable));
+        return PaginatedResponse.from(page);
     }
 
     @Transactional

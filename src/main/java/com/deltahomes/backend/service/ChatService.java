@@ -1,15 +1,20 @@
 package com.deltahomes.backend.service;
 
+import com.deltahomes.backend.dto.common.PaginatedResponse;
+import com.deltahomes.backend.dto.summary.ConversationSummary;
+import com.deltahomes.backend.dto.summary.MessageSummary;
 import com.deltahomes.backend.entity.communication.Conversation;
 import com.deltahomes.backend.entity.communication.Message;
 import com.deltahomes.backend.entity.user.User;
 import com.deltahomes.backend.exception.ResourceNotFoundException;
 import com.deltahomes.backend.repository.ConversationRepository;
 import com.deltahomes.backend.repository.MessageRepository;
+import com.deltahomes.backend.util.PageUtils;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -42,7 +47,15 @@ public class ChatService {
         return messageRepository.save(message);
     }
 
-    public List<Message> getConversationMessages(UUID conversationId) {
-        return messageRepository.findByConversationIdOrderByCreatedAtAsc(conversationId);
+    public PaginatedResponse<ConversationSummary> indexConversations(User user, Pageable pageable) {
+        Page<ConversationSummary> page = conversationRepository.searchIndex(user.getId(), PageUtils.normalizeSort(pageable));
+        return PaginatedResponse.from(page);
+    }
+
+    public PaginatedResponse<MessageSummary> getConversationMessages(UUID conversationId, String q,
+                                                                     Pageable pageable) {
+        Page<MessageSummary> page = messageRepository.searchIndex(
+                conversationId, q == null ? "" : q.trim(), PageUtils.normalizeSort(pageable));
+        return PaginatedResponse.from(page);
     }
 }

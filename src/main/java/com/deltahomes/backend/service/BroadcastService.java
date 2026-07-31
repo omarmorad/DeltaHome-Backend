@@ -1,12 +1,20 @@
 package com.deltahomes.backend.service;
 
+import com.deltahomes.backend.dto.common.PaginatedResponse;
+import com.deltahomes.backend.dto.summary.BroadcastSummary;
 import com.deltahomes.backend.entity.company.Company;
+import com.deltahomes.backend.entity.enums.BroadcastType;
 import com.deltahomes.backend.entity.enums.SubscriptionTier;
 import com.deltahomes.backend.entity.marketing.Broadcast;
 import com.deltahomes.backend.exception.BusinessException;
 import com.deltahomes.backend.repository.BroadcastRepository;
+import com.deltahomes.backend.util.PageUtils;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 @Service
 public class BroadcastService {
@@ -15,6 +23,17 @@ public class BroadcastService {
 
     public BroadcastService(BroadcastRepository broadcastRepository) {
         this.broadcastRepository = broadcastRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public PaginatedResponse<BroadcastSummary> index(String q, UUID companyId, BroadcastType type,
+                                                     Pageable pageable) {
+        Page<BroadcastSummary> page = broadcastRepository.searchIndex(
+                q == null ? "" : q.trim(),
+                companyId,
+                type == null ? null : type.name(),
+                PageUtils.normalizeSort(pageable));
+        return PaginatedResponse.from(page);
     }
 
     @Transactional
