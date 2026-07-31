@@ -57,8 +57,9 @@ public class JwtService {
     }
 
     private String generateToken(User user, String type, long expirationMs) {
+        String subject = user.getPhone() != null ? user.getPhone() : user.getEmail();
         return Jwts.builder()
-                .subject(user.getPhone())
+                .subject(subject)
                 .claim("userId", user.getId())
                 .claim("role", user.getRole().name())
                 .claim(CLAIM_TYPE, type)

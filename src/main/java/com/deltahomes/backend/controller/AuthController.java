@@ -33,6 +33,18 @@ public class AuthController {
         return ResponseEntity.ok(authService.verifyOtp(request.phone(), request.code(), request.purpose()));
     }
 
+    @PostMapping("/otp/send-email")
+    public ResponseEntity<AuthDtos.OtpSendResponse> sendEmailOtp(
+            @Valid @RequestBody AuthDtos.SendEmailOtpRequest request) {
+        return ResponseEntity.ok(authService.sendEmailOtp(request.email(), request.purpose()));
+    }
+
+    @PostMapping("/otp/verify-email")
+    public ResponseEntity<AuthDtos.OtpVerifyResponse> verifyEmailOtp(
+            @Valid @RequestBody AuthDtos.VerifyEmailOtpRequest request) {
+        return ResponseEntity.ok(authService.verifyEmailOtp(request.email(), request.code(), request.purpose()));
+    }
+
     // ---------- Registration & login ----------
 
     @PostMapping("/register")
@@ -41,16 +53,34 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(request));
     }
 
+    @PostMapping("/register-email")
+    public ResponseEntity<AuthDtos.AuthResponse> registerWithEmail(
+            @Valid @RequestBody AuthDtos.RegisterEmailRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(authService.registerWithEmail(request));
+    }
+
     @PostMapping("/login")
     public ResponseEntity<AuthDtos.AuthResponse> login(
             @Valid @RequestBody AuthDtos.LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
     }
 
+    @PostMapping("/login/email")
+    public ResponseEntity<AuthDtos.AuthResponse> loginWithEmail(
+            @Valid @RequestBody AuthDtos.LoginEmailRequest request) {
+        return ResponseEntity.ok(authService.loginWithEmail(request));
+    }
+
     @PostMapping("/login/otp")
     public ResponseEntity<AuthDtos.AuthResponse> loginWithOtp(
             @Valid @RequestBody AuthDtos.LoginWithOtpRequest request) {
         return ResponseEntity.ok(authService.loginWithOtp(request.phone(), request.otpCode()));
+    }
+
+    @PostMapping("/login/otp/email")
+    public ResponseEntity<AuthDtos.AuthResponse> loginWithEmailOtp(
+            @Valid @RequestBody AuthDtos.LoginWithEmailOtpRequest request) {
+        return ResponseEntity.ok(authService.loginWithEmailOtp(request.email(), request.otpCode()));
     }
 
     @PostMapping("/refresh")
@@ -80,6 +110,13 @@ public class AuthController {
     public ResponseEntity<AuthDtos.MessageResponse> resetPassword(
             @Valid @RequestBody AuthDtos.ResetPasswordRequest request) {
         authService.resetPassword(request.phone(), request.otpCode(), request.newPassword());
+        return ResponseEntity.ok(new AuthDtos.MessageResponse("Password reset successfully"));
+    }
+
+    @PostMapping("/password/reset/email")
+    public ResponseEntity<AuthDtos.MessageResponse> resetPasswordByEmail(
+            @Valid @RequestBody AuthDtos.ResetPasswordEmailRequest request) {
+        authService.resetPasswordByEmail(request.email(), request.otpCode(), request.newPassword());
         return ResponseEntity.ok(new AuthDtos.MessageResponse("Password reset successfully"));
     }
 

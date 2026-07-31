@@ -17,12 +17,16 @@ import java.time.LocalDateTime;
 @Setter
 @Entity
 @Table(name = "otp_codes", indexes = {
-        @Index(name = "idx_otp_phone_purpose", columnList = "phone, purpose")
+        @Index(name = "idx_otp_phone_purpose", columnList = "phone, purpose"),
+        @Index(name = "idx_otp_email_purpose", columnList = "email, purpose")
 })
 public class OtpCode extends BaseEntity {
 
-    @Column(name = "phone", length = 20, nullable = false)
+    @Column(name = "phone", length = 20)
     private String phone;
+
+    @Column(name = "email", length = 150)
+    private String email;
 
     @Column(name = "code_hash", length = 64, nullable = false)
     private String codeHash;

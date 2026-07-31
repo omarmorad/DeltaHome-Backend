@@ -4,6 +4,7 @@ import com.deltahomes.backend.entity.enums.OtpPurpose;
 import com.deltahomes.backend.entity.enums.UserRole;
 import com.deltahomes.backend.entity.enums.UserStatus;
 import com.deltahomes.backend.entity.user.User;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -115,6 +116,92 @@ public final class AuthDtos {
             @NotBlank(message = "Phone is required")
             @Pattern(regexp = PHONE_PATTERN, message = PHONE_MESSAGE)
             String phone,
+
+            @NotBlank(message = "OTP code is required")
+            @Pattern(regexp = OTP_PATTERN, message = OTP_MESSAGE)
+            String otpCode,
+
+            @NotBlank(message = "New password is required")
+            @Size(min = 6, max = 72, message = PASSWORD_MESSAGE)
+            String newPassword
+    ) {
+    }
+
+    // ---------- Email-based requests ----------
+
+    public record SendEmailOtpRequest(
+            @NotBlank(message = "Email is required")
+            @Email(message = "Invalid email address")
+            @Size(max = 150, message = "Email must be at most 150 characters")
+            String email,
+
+            @NotNull(message = "Purpose is required")
+            OtpPurpose purpose
+    ) {
+    }
+
+    public record VerifyEmailOtpRequest(
+            @NotBlank(message = "Email is required")
+            @Email(message = "Invalid email address")
+            String email,
+
+            @NotBlank(message = "Code is required")
+            @Pattern(regexp = OTP_PATTERN, message = OTP_MESSAGE)
+            String code,
+
+            @NotNull(message = "Purpose is required")
+            OtpPurpose purpose
+    ) {
+    }
+
+    public record RegisterEmailRequest(
+            @NotBlank(message = "Name is required")
+            @Size(max = 120, message = "Name must be at most 120 characters")
+            String name,
+
+            @NotBlank(message = "Email is required")
+            @Email(message = "Invalid email address")
+            @Size(max = 150, message = "Email must be at most 150 characters")
+            String email,
+
+            @NotBlank(message = "Password is required")
+            @Size(min = 6, max = 72, message = PASSWORD_MESSAGE)
+            String password,
+
+            @NotNull(message = "Role is required")
+            UserRole role,
+
+            @NotBlank(message = "OTP code is required")
+            @Pattern(regexp = OTP_PATTERN, message = OTP_MESSAGE)
+            String otpCode
+    ) {
+    }
+
+    public record LoginEmailRequest(
+            @NotBlank(message = "Email is required")
+            @Email(message = "Invalid email address")
+            String email,
+
+            @NotBlank(message = "Password is required")
+            String password
+    ) {
+    }
+
+    public record LoginWithEmailOtpRequest(
+            @NotBlank(message = "Email is required")
+            @Email(message = "Invalid email address")
+            String email,
+
+            @NotBlank(message = "OTP code is required")
+            @Pattern(regexp = OTP_PATTERN, message = OTP_MESSAGE)
+            String otpCode
+    ) {
+    }
+
+    public record ResetPasswordEmailRequest(
+            @NotBlank(message = "Email is required")
+            @Email(message = "Invalid email address")
+            String email,
 
             @NotBlank(message = "OTP code is required")
             @Pattern(regexp = OTP_PATTERN, message = OTP_MESSAGE)

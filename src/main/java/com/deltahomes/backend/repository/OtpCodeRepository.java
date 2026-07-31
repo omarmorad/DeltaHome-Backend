@@ -16,4 +16,10 @@ public interface OtpCodeRepository extends JpaRepository<OtpCode, Long> {
     void deleteByPhoneAndPurpose(String phone, OtpPurpose purpose);
 
     long countByPhoneAndPurposeAndCreatedAtAfter(String phone, OtpPurpose purpose, LocalDateTime after);
+
+    Optional<OtpCode> findFirstByEmailAndPurposeOrderByCreatedAtDesc(String email, OtpPurpose purpose);
+
+    void deleteByEmailAndPurpose(String email, OtpPurpose purpose);
+
+    long countByEmailAndPurposeAndCreatedAtAfter(String email, OtpPurpose purpose, LocalDateTime after);
 }

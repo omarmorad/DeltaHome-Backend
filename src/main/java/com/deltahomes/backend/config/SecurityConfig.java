@@ -48,7 +48,7 @@ public class SecurityConfig {
                 .authenticationEntryPoint(authenticationEntryPoint)
                 .accessDeniedHandler(accessDeniedHandler))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/v1/auth/logout").authenticated()
+                .requestMatchers("/api/v1/auth/logout", "/api/v1/auth/me").authenticated()
                 .requestMatchers("/api/v1/auth/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/properties", "/api/v1/properties/*").permitAll()
                 .requestMatchers("/api/v1/search").permitAll()

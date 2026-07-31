@@ -16,16 +16,18 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
+import java.util.Optional;
+import java.util.function.Consumer;
 
 /**
- * Generates, sends, verifies and consumes SMS OTP codes.
+ * Generates, sends, verifies and consumes SMS/email OTP codes.
  * <p>
  * Security measures:
  * <ul>
  *   <li>Codes are stored as SHA-256 hashes, never in plain text.</li>
  *   <li>Codes expire after a short window (default 5 minutes).</li>
  *   <li>Brute force is limited by a max attempts counter per code.</li>
- *   <li>Send frequency is rate-limited per phone + purpose.</li>
+ *   <li>Send frequency is rate-limited per recipient + purpose.</li>
  *   <li>A successful verification or a full flow consumes (deletes) the code.</li>
  * </ul>
  */
@@ -38,6 +40,7 @@ public class OtpService {
 
     private final OtpCodeRepository otpCodeRepository;
     private final SmsService smsService;
+    private final EmailService emailService;
 
     @Value("${app.otp.expiry-minutes:5}")
     private int expiryMinutes;
@@ -57,14 +60,19 @@ public class OtpService {
     @Value("${app.admin.permanent-otp:}")
     private String permanentOtp;
 
-    public OtpService(OtpCodeRepository otpCodeRepository, SmsService smsService) {
+    public OtpService(OtpCodeRepository otpCodeRepository,
+                      SmsService smsService,
+                      EmailService emailService) {
         this.otpCodeRepository = otpCodeRepository;
         this.smsService = smsService;
+        this.emailService = emailService;
     }
 
     public int getExpiryMinutes() {
         return expiryMinutes;
     }
+
+    // ---------- SMS (phone) OTP ----------
 
     @Transactional
     public OtpCode sendOtp(String phone, OtpPurpose purpose) {
@@ -72,35 +80,7 @@ public class OtpService {
             log.info("[PERMANENT ADMIN OTP] SMS OTP for {}: {}", phone, permanentOtp);
             return null;
         }
-        LocalDateTime now = LocalDateTime.now();
-
-        long sentInWindow = otpCodeRepository.countByPhoneAndPurposeAndCreatedAtAfter(
-                phone, purpose, now.minusMinutes(15));
-        if (sentInWindow >= maxSendsPerWindow) {
-            throw new BusinessException("Too many OTP requests. Please try again later.");
-        }
-
-        otpCodeRepository.findFirstByPhoneAndPurposeOrderByCreatedAtDesc(phone, purpose)
-                .ifPresent(last -> {
-                    if (last.getCreatedAt().isAfter(now.minusSeconds(resendCooldownSeconds))) {
-                        throw new BusinessException("Please wait a moment before requesting a new code.");
-                    }
-                });
-
-        // Invalidate any previously issued code for this phone + purpose.
-        otpCodeRepository.deleteByPhoneAndPurpose(phone, purpose);
-
-        String code = String.format("%06d", RANDOM.nextInt(1_000_000));
-        OtpCode otp = new OtpCode();
-        otp.setPhone(phone);
-        otp.setCodeHash(hash(code));
-        otp.setPurpose(purpose);
-        otp.setExpiresAt(now.plusMinutes(expiryMinutes));
-        otp.setAttempts(0);
-        otp.setVerified(false);
-
-        smsService.sendOtp(phone, code);
-        return otpCodeRepository.save(otp);
+        return issueOtp(phone, null, purpose, code -> smsService.sendOtp(phone, code));
     }
 
     @Transactional
@@ -108,9 +88,81 @@ public class OtpService {
         if (isPermanentOtp(phone, code)) {
             return;
         }
-        OtpCode otp = otpCodeRepository
-                .findFirstByPhoneAndPurposeOrderByCreatedAtDesc(phone, purpose)
-                .orElseThrow(() -> new BusinessException("No active OTP code found. Request a new one."));
+        checkOtp(phone, null, code, purpose);
+    }
+
+    /** Deletes all phone codes for the recipient + purpose so they cannot be replayed. */
+    @Transactional
+    public void consume(String phone, OtpPurpose purpose) {
+        otpCodeRepository.deleteByPhoneAndPurpose(phone, purpose);
+    }
+
+    // ---------- Email OTP ----------
+
+    @Transactional
+    public OtpCode sendEmailOtp(String email, OtpPurpose purpose) {
+        return issueOtp(null, email, purpose, code -> emailService.sendOtp(email, code));
+    }
+
+    @Transactional
+    public void verifyEmail(String email, String code, OtpPurpose purpose) {
+        checkOtp(null, email, code, purpose);
+    }
+
+    /** Deletes all email codes for the recipient + purpose so they cannot be replayed. */
+    @Transactional
+    public void consumeEmail(String email, OtpPurpose purpose) {
+        otpCodeRepository.deleteByEmailAndPurpose(email, purpose);
+    }
+
+    // ---------- Shared logic ----------
+
+    private OtpCode issueOtp(String phone, String email, OtpPurpose purpose, Consumer<String> sender) {
+        LocalDateTime now = LocalDateTime.now();
+        String recipient = phone != null ? phone : email;
+
+        long sentInWindow = phone != null
+                ? otpCodeRepository.countByPhoneAndPurposeAndCreatedAtAfter(phone, purpose, now.minusMinutes(15))
+                : otpCodeRepository.countByEmailAndPurposeAndCreatedAtAfter(email, purpose, now.minusMinutes(15));
+        if (sentInWindow >= maxSendsPerWindow) {
+            throw new BusinessException("Too many OTP requests. Please try again later.");
+        }
+
+        Optional<OtpCode> last = phone != null
+                ? otpCodeRepository.findFirstByPhoneAndPurposeOrderByCreatedAtDesc(phone, purpose)
+                : otpCodeRepository.findFirstByEmailAndPurposeOrderByCreatedAtDesc(email, purpose);
+        last.ifPresent(previous -> {
+            if (previous.getCreatedAt().isAfter(now.minusSeconds(resendCooldownSeconds))) {
+                throw new BusinessException("Please wait a moment before requesting a new code.");
+            }
+        });
+
+        // Invalidate any previously issued code for this recipient + purpose.
+        if (phone != null) {
+            otpCodeRepository.deleteByPhoneAndPurpose(phone, purpose);
+        } else {
+            otpCodeRepository.deleteByEmailAndPurpose(email, purpose);
+        }
+
+        String code = String.format("%06d", RANDOM.nextInt(1_000_000));
+        OtpCode otp = new OtpCode();
+        otp.setPhone(phone);
+        otp.setEmail(email);
+        otp.setCodeHash(hash(code));
+        otp.setPurpose(purpose);
+        otp.setExpiresAt(now.plusMinutes(expiryMinutes));
+        otp.setAttempts(0);
+        otp.setVerified(false);
+
+        sender.accept(code);
+        return otpCodeRepository.save(otp);
+    }
+
+    private void checkOtp(String phone, String email, String code, OtpPurpose purpose) {
+        Optional<OtpCode> found = phone != null
+                ? otpCodeRepository.findFirstByPhoneAndPurposeOrderByCreatedAtDesc(phone, purpose)
+                : otpCodeRepository.findFirstByEmailAndPurposeOrderByCreatedAtDesc(email, purpose);
+        OtpCode otp = found.orElseThrow(() -> new BusinessException("No active OTP code found. Request a new one."));
 
         if (otp.getExpiresAt().isBefore(LocalDateTime.now())) {
             otpCodeRepository.delete(otp);
@@ -136,12 +188,6 @@ public class OtpService {
             otp.setVerified(true);
             otpCodeRepository.save(otp);
         }
-    }
-
-    /** Deletes all codes for the phone + purpose so they cannot be replayed. */
-    @Transactional
-    public void consume(String phone, OtpPurpose purpose) {
-        otpCodeRepository.deleteByPhoneAndPurpose(phone, purpose);
     }
 
     /** The permanent admin OTP never expires and works for any purpose. */

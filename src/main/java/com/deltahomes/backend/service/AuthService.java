@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Service
 public class AuthService {
@@ -51,6 +52,95 @@ public class AuthService {
     public AuthDtos.OtpVerifyResponse verifyOtp(String phone, String code, OtpPurpose purpose) {
         otpService.verify(phone, code, purpose);
         return new AuthDtos.OtpVerifyResponse(phone, true);
+    }
+
+    // ---------- Email OTP ----------
+
+    @Transactional
+    public AuthDtos.OtpSendResponse sendEmailOtp(String email, OtpPurpose purpose) {
+        otpService.sendEmailOtp(normalizeEmail(email), purpose);
+        return new AuthDtos.OtpSendResponse(normalizeEmail(email), otpService.getExpiryMinutes(),
+                "OTP sent to " + maskEmail(email));
+    }
+
+    @Transactional
+    public AuthDtos.OtpVerifyResponse verifyEmailOtp(String email, String code, OtpPurpose purpose) {
+        otpService.verifyEmail(normalizeEmail(email), code, purpose);
+        return new AuthDtos.OtpVerifyResponse(normalizeEmail(email), true);
+    }
+
+    // ---------- Email registration ----------
+
+    @Transactional
+    public AuthDtos.AuthResponse registerWithEmail(AuthDtos.RegisterEmailRequest request) {
+        String email = normalizeEmail(request.email());
+        if (userRepository.findByEmail(email).isPresent()) {
+            throw new BusinessException("Email already registered");
+        }
+        if (request.role() == UserRole.ADMIN) {
+            throw new BusinessException("Admin accounts are provisioned by the platform");
+        }
+
+        otpService.verifyEmail(email, request.otpCode(), OtpPurpose.REGISTRATION);
+
+        User user = new User();
+        user.setName(request.name().trim());
+        user.setEmail(email);
+        user.setPasswordHash(passwordEncoder.encode(request.password()));
+        user.setRole(request.role());
+        user.setStatus(UserStatus.ACTIVE);
+        user.setVerificationLevel((byte) 1);
+        user.setLastLoginAt(LocalDateTime.now());
+
+        User saved = userRepository.save(user);
+        otpService.consumeEmail(email, OtpPurpose.REGISTRATION);
+        return buildAuthResponse(saved);
+    }
+
+    // ---------- Email login ----------
+
+    @Transactional
+    public AuthDtos.AuthResponse loginWithEmail(AuthDtos.LoginEmailRequest request) {
+        User user = userRepository.findByEmail(normalizeEmail(request.email()))
+                .orElseThrow(() -> new BusinessException("Invalid credentials"));
+        ensureActive(user);
+
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(normalizeEmail(request.email()), request.password()));
+        } catch (AuthenticationException e) {
+            throw new BusinessException("Invalid credentials");
+        }
+
+        touchLastLogin(user);
+        return buildAuthResponse(user);
+    }
+
+    @Transactional
+    public AuthDtos.AuthResponse loginWithEmailOtp(String email, String otpCode) {
+        String normalized = normalizeEmail(email);
+        User user = userRepository.findByEmail(normalized)
+                .orElseThrow(() -> new BusinessException("No account found for this email. Please register first."));
+        ensureActive(user);
+
+        otpService.verifyEmail(normalized, otpCode, OtpPurpose.LOGIN);
+
+        touchLastLogin(user);
+        otpService.consumeEmail(normalized, OtpPurpose.LOGIN);
+        return buildAuthResponse(user);
+    }
+
+    // ---------- Email password reset ----------
+
+    @Transactional
+    public void resetPasswordByEmail(String email, String otpCode, String newPassword) {
+        String normalized = normalizeEmail(email);
+        User user = userRepository.findByEmail(normalized)
+                .orElseThrow(() -> new BusinessException("No account found for this email"));
+        otpService.verifyEmail(normalized, otpCode, OtpPurpose.PASSWORD_RESET);
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        otpService.consumeEmail(normalized, OtpPurpose.PASSWORD_RESET);
     }
 
     // ---------- Registration ----------
@@ -119,7 +209,7 @@ public class AuthService {
             throw new BusinessException("Invalid or expired refresh token");
         }
         String phone = jwtService.extractPhone(refreshToken);
-        User user = userRepository.findByPhone(phone)
+        User user = findByPhoneOrEmail(phone)
                 .orElseThrow(() -> new BusinessException("Invalid or expired refresh token"));
         ensureActive(user);
         return buildAuthResponse(user);
@@ -127,8 +217,8 @@ public class AuthService {
 
     // ---------- Profile & password ----------
 
-    public AuthDtos.UserResponse me(String phone) {
-        User user = userRepository.findByPhone(phone)
+    public AuthDtos.UserResponse me(String identifier) {
+        User user = findByPhoneOrEmail(identifier)
                 .orElseThrow(() -> new BusinessException("User not found"));
         return AuthDtos.UserResponse.from(user);
     }
@@ -177,10 +267,32 @@ public class AuthService {
         );
     }
 
+    private Optional<User> findByPhoneOrEmail(String identifier) {
+        return userRepository.findByPhone(identifier)
+                .or(() -> userRepository.findByEmail(identifier));
+    }
+
     private static String maskPhone(String phone) {
         if (phone == null || phone.length() < 7) {
             return phone;
         }
         return phone.substring(0, 4) + "***" + phone.substring(phone.length() - 3);
+    }
+
+    private static String maskEmail(String email) {
+        if (email == null || !email.contains("@")) {
+            return email;
+        }
+        int at = email.indexOf('@');
+        String local = email.substring(0, at);
+        String domain = email.substring(at);
+        if (local.length() <= 2) {
+            return local.charAt(0) + "***" + domain;
+        }
+        return local.substring(0, 2) + "***" + local.substring(local.length() - 1) + domain;
+    }
+
+    private static String normalizeEmail(String email) {
+        return email == null ? null : email.trim().toLowerCase();
     }
 }
