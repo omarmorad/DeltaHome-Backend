@@ -6,6 +6,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.UUID;
+
 @Getter
 @Setter
 @Entity
@@ -23,7 +25,7 @@ public class AuditLog extends BaseEntity {
     private String targetType;
 
     @Column(name = "target_id")
-    private Long targetId;
+    private UUID targetId;
 
     @Column(name = "ip_address", length = 45)
     private String ipAddress;

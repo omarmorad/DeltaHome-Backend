@@ -60,7 +60,7 @@ public class JwtService {
         String subject = user.getPhone() != null ? user.getPhone() : user.getEmail();
         return Jwts.builder()
                 .subject(subject)
-                .claim("userId", user.getId())
+                .claim("userId", user.getId().toString())
                 .claim("role", user.getRole().name())
                 .claim(CLAIM_TYPE, type)
                 .issuedAt(new Date())

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class ChatService {
@@ -41,7 +42,7 @@ public class ChatService {
         return messageRepository.save(message);
     }
 
-    public List<Message> getConversationMessages(Long conversationId) {
+    public List<Message> getConversationMessages(UUID conversationId) {
         return messageRepository.findByConversationIdOrderByCreatedAtAsc(conversationId);
     }
 }

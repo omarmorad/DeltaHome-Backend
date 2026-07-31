@@ -7,6 +7,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.UUID;
+
 @Getter
 @Setter
 @Entity
@@ -24,5 +26,5 @@ public class SavedItem extends BaseEntity {
     private EntityType entityType;
 
     @Column(name = "entity_id", nullable = false)
-    private Long entityId;
+    private UUID entityId;
 }

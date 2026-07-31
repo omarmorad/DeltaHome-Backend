@@ -10,6 +10,8 @@ import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import java.util.UUID;
+
 @Getter
 @Setter
 @Entity
@@ -25,7 +27,7 @@ public class Report extends BaseEntity {
     private EntityType entityType;
 
     @Column(name = "entity_id", nullable = false)
-    private Long entityId;
+    private UUID entityId;
 
     @Column(name = "reason", length = 255, nullable = false)
     private String reason;

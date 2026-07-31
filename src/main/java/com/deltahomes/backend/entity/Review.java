@@ -9,6 +9,8 @@ import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import java.util.UUID;
+
 @Getter
 @Setter
 @Entity
@@ -24,7 +26,7 @@ public class Review extends BaseEntity {
     private EntityType entityType;
 
     @Column(name = "entity_id", nullable = false)
-    private Long entityId;
+    private UUID entityId;
 
     @Column(name = "rating", nullable = false)
     private Byte rating;
@@ -43,5 +45,5 @@ public class Review extends BaseEntity {
     private Boolean interactionVerified = false;
 
     @Column(name = "source_appointment_id")
-    private Long sourceAppointmentId;
+    private UUID sourceAppointmentId;
 }

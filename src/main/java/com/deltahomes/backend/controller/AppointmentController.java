@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/appointments")
@@ -25,7 +26,7 @@ public class AppointmentController {
 
     @PatchMapping("/{id}")
     public ResponseEntity<Appointment> updateAppointmentStatus(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestBody Map<String, String> request) {
         AppointmentStatus status = AppointmentStatus.valueOf(
                 request.get("status").toUpperCase());

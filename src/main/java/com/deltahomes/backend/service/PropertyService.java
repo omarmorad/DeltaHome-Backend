@@ -9,6 +9,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 @Service
 public class PropertyService {
 
@@ -22,7 +24,7 @@ public class PropertyService {
         return propertyRepository.findByStatus(PropertyStatus.PUBLISHED, pageable);
     }
 
-    public Property getPropertyById(Long id) {
+    public Property getPropertyById(UUID id) {
         return propertyRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Property", id));
     }
@@ -34,7 +36,7 @@ public class PropertyService {
     }
 
     @Transactional
-    public Property updateProperty(Long id, Property updates) {
+    public Property updateProperty(UUID id, Property updates) {
         Property existing = getPropertyById(id);
         // Merge fields — expand as needed
         existing.setTitle(updates.getTitle());
@@ -44,7 +46,7 @@ public class PropertyService {
         return propertyRepository.save(existing);
     }
 
-    public Page<Property> searchProperties(Long cityId, Long districtId,
+    public Page<Property> searchProperties(UUID cityId, UUID districtId,
                                            String purpose, Double minPrice,
                                            Double maxPrice, Pageable pageable) {
         return propertyRepository.searchProperties(

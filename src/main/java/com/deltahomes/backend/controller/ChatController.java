@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/conversations")
@@ -19,13 +20,13 @@ public class ChatController {
     }
 
     @GetMapping("/{id}/messages")
-    public ResponseEntity<List<Message>> getMessages(@PathVariable Long id) {
+    public ResponseEntity<List<Message>> getMessages(@PathVariable UUID id) {
         return ResponseEntity.ok(chatService.getConversationMessages(id));
     }
 
     @PostMapping("/{id}/messages")
     public ResponseEntity<Message> sendMessage(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestBody Message message) {
         // Stub: requires user authentication
         return ResponseEntity.ok(message);

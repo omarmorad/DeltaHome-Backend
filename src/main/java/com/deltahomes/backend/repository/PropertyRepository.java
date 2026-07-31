@@ -10,11 +10,12 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.UUID;
 
 @Repository
-public interface PropertyRepository extends JpaRepository<Property, Long> {
+public interface PropertyRepository extends JpaRepository<Property, UUID> {
 
-    Page<Property> findByOwnerIdAndStatusNot(Long ownerId, PropertyStatus status, Pageable pageable);
+    Page<Property> findByOwnerIdAndStatusNot(UUID ownerId, PropertyStatus status, Pageable pageable);
 
     Page<Property> findByStatus(PropertyStatus status, Pageable pageable);
 
@@ -24,13 +25,13 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
            "AND (:purpose IS NULL OR p.purpose = :purpose) " +
            "AND (:minPrice IS NULL OR p.price >= :minPrice) " +
            "AND (:maxPrice IS NULL OR p.price <= :maxPrice)")
-    Page<Property> searchProperties(@Param("cityId") Long cityId,
-                                    @Param("districtId") Long districtId,
+    Page<Property> searchProperties(@Param("cityId") UUID cityId,
+                                    @Param("districtId") UUID districtId,
                                     @Param("purpose") String purpose,
                                     @Param("minPrice") Double minPrice,
                                     @Param("maxPrice") Double maxPrice,
                                     Pageable pageable);
 
     // Duplicate detection (V1): exact-match on owner_id + price + district_id
-    List<Property> findByOwnerIdAndPriceAndDistrictId(Long ownerId, java.math.BigDecimal price, Long districtId);
+    List<Property> findByOwnerIdAndPriceAndDistrictId(UUID ownerId, java.math.BigDecimal price, UUID districtId);
 }

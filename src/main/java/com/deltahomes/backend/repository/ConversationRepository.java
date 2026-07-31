@@ -6,9 +6,10 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
-public interface ConversationRepository extends JpaRepository<Conversation, Long> {
-    List<Conversation> findByUserOneIdOrUserTwoIdOrderByUpdatedAtDesc(Long userOneId, Long userTwoId);
-    Optional<Conversation> findByUserOneIdAndUserTwoId(Long userOneId, Long userTwoId);
+public interface ConversationRepository extends JpaRepository<Conversation, UUID> {
+    List<Conversation> findByUserOneIdOrUserTwoIdOrderByUpdatedAtDesc(UUID userOneId, UUID userTwoId);
+    Optional<Conversation> findByUserOneIdAndUserTwoId(UUID userOneId, UUID userTwoId);
 }

@@ -11,6 +11,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * All request/response payloads for the authentication module.
@@ -231,7 +232,7 @@ public final class AuthDtos {
     }
 
     public record UserResponse(
-            Long id,
+            UUID id,
             String name,
             String phone,
             String email,

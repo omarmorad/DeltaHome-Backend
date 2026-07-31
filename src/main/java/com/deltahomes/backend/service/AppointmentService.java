@@ -8,6 +8,8 @@ import com.deltahomes.backend.repository.AppointmentRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 @Service
 public class AppointmentService {
 
@@ -24,7 +26,7 @@ public class AppointmentService {
     }
 
     @Transactional
-    public Appointment updateStatus(Long appointmentId, AppointmentStatus newStatus) {
+    public Appointment updateStatus(UUID appointmentId, AppointmentStatus newStatus) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Appointment", appointmentId));
 

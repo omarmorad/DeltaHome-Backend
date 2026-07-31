@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/saved-items")
@@ -31,7 +32,7 @@ public class SavedItemController {
     public ResponseEntity<SocialDtos.SavedItemResponse> save(@AuthenticationPrincipal UserDetails principal,
                                                              @RequestBody Map<String, Object> body) {
         EntityType entityType = parseEntityType(body.get("entityType"));
-        Long entityId = Long.valueOf(body.get("entityId").toString());
+        UUID entityId = UUID.fromString(body.get("entityId").toString());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(SocialDtos.SavedItemResponse.from(
                         savedItemService.save(currentUser(principal), entityType, entityId)));
@@ -40,7 +41,7 @@ public class SavedItemController {
     @DeleteMapping("/{entityType}/{entityId}")
     public ResponseEntity<Void> unsave(@AuthenticationPrincipal UserDetails principal,
                                        @PathVariable EntityType entityType,
-                                       @PathVariable Long entityId) {
+                                       @PathVariable UUID entityId) {
         savedItemService.unsave(currentUser(principal), entityType, entityId);
         return ResponseEntity.noContent().build();
     }

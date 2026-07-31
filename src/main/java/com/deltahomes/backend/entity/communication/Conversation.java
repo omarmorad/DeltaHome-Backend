@@ -6,6 +6,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.UUID;
+
 @Getter
 @Setter
 @Entity
@@ -24,8 +26,8 @@ public class Conversation extends BaseEntity {
     private String lastMessagePreview;
 
     @Column(name = "last_seen_user_one")
-    private Long lastSeenUserOne;
+    private UUID lastSeenUserOne;
 
     @Column(name = "last_seen_user_two")
-    private Long lastSeenUserTwo;
+    private UUID lastSeenUserTwo;
 }

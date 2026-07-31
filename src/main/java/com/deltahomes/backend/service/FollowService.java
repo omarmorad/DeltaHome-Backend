@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class FollowService {
@@ -36,7 +37,7 @@ public class FollowService {
     }
 
     @Transactional
-    public Follower follow(User user, Long companyId) {
+    public Follower follow(User user, UUID companyId) {
         Company company = getCompany(companyId);
         if (followerRepository.existsByUserIdAndCompanyId(user.getId(), companyId)) {
             throw new BusinessException("Already following this company");
@@ -51,7 +52,7 @@ public class FollowService {
     }
 
     @Transactional
-    public void unfollow(User user, Long companyId) {
+    public void unfollow(User user, UUID companyId) {
         if (!followerRepository.existsByUserIdAndCompanyId(user.getId(), companyId)) {
             throw new BusinessException("Not following this company");
         }
@@ -61,11 +62,11 @@ public class FollowService {
         companyRepository.save(company);
     }
 
-    public boolean isFollowing(User user, Long companyId) {
+    public boolean isFollowing(User user, UUID companyId) {
         return followerRepository.existsByUserIdAndCompanyId(user.getId(), companyId);
     }
 
-    public long getFollowersCount(Long companyId) {
+    public long getFollowersCount(UUID companyId) {
         return followerRepository.countByCompanyId(companyId);
     }
 
@@ -77,7 +78,7 @@ public class FollowService {
                 .toList();
     }
 
-    private Company getCompany(Long companyId) {
+    private Company getCompany(UUID companyId) {
         return companyRepository.findById(companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Company", companyId));
     }

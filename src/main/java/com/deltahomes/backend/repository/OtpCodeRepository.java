@@ -8,8 +8,10 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+import java.util.UUID;
+
 @Repository
-public interface OtpCodeRepository extends JpaRepository<OtpCode, Long> {
+public interface OtpCodeRepository extends JpaRepository<OtpCode, UUID> {
 
     Optional<OtpCode> findFirstByPhoneAndPurposeOrderByCreatedAtDesc(String phone, OtpPurpose purpose);
 

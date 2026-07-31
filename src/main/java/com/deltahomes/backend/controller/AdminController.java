@@ -4,6 +4,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/admin")
@@ -16,7 +17,7 @@ public class AdminController {
 
     @PostMapping("/verification/{id}/decision")
     public ResponseEntity<Map<String, String>> decideVerification(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestBody Map<String, String> request) {
         return ResponseEntity.ok(Map.of(
             "verificationId", String.valueOf(id),

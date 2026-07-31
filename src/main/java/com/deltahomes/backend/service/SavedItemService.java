@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class SavedItemService {
@@ -29,7 +30,7 @@ public class SavedItemService {
     }
 
     @Transactional
-    public SavedItem save(User user, EntityType entityType, Long entityId) {
+    public SavedItem save(User user, EntityType entityType, UUID entityId) {
         assertEntityExists(entityType, entityId);
         if (savedItemRepository.existsByUserIdAndEntityTypeAndEntityId(user.getId(), entityType, entityId)) {
             throw new BusinessException("Item already saved");
@@ -42,7 +43,7 @@ public class SavedItemService {
     }
 
     @Transactional
-    public void unsave(User user, EntityType entityType, Long entityId) {
+    public void unsave(User user, EntityType entityType, UUID entityId) {
         savedItemRepository.deleteByUserIdAndEntityTypeAndEntityId(user.getId(), entityType, entityId);
     }
 
@@ -57,11 +58,11 @@ public class SavedItemService {
                 .toList();
     }
 
-    public boolean isSaved(User user, EntityType entityType, Long entityId) {
+    public boolean isSaved(User user, EntityType entityType, UUID entityId) {
         return savedItemRepository.existsByUserIdAndEntityTypeAndEntityId(user.getId(), entityType, entityId);
     }
 
-    private void assertEntityExists(EntityType entityType, Long entityId) {
+    private void assertEntityExists(EntityType entityType, UUID entityId) {
         switch (entityType) {
             case PROPERTY -> {
                 if (!propertyRepository.existsById(entityId)) {

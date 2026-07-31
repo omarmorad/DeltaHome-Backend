@@ -6,12 +6,13 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
-public interface FollowerRepository extends JpaRepository<Follower, Long> {
-    Optional<Follower> findByUserIdAndCompanyId(Long userId, Long companyId);
-    boolean existsByUserIdAndCompanyId(Long userId, Long companyId);
-    long countByCompanyId(Long companyId);
-    void deleteByUserIdAndCompanyId(Long userId, Long companyId);
-    List<Follower> findByUserId(Long userId);
+public interface FollowerRepository extends JpaRepository<Follower, UUID> {
+    Optional<Follower> findByUserIdAndCompanyId(UUID userId, UUID companyId);
+    boolean existsByUserIdAndCompanyId(UUID userId, UUID companyId);
+    long countByCompanyId(UUID companyId);
+    void deleteByUserIdAndCompanyId(UUID userId, UUID companyId);
+    List<Follower> findByUserId(UUID userId);
 }

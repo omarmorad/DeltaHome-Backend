@@ -7,6 +7,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/api/v1/properties")
 public class PropertyController {
@@ -19,8 +21,8 @@ public class PropertyController {
 
     @GetMapping
     public ResponseEntity<Page<Property>> searchProperties(
-            @RequestParam(required = false) Long cityId,
-            @RequestParam(required = false) Long districtId,
+            @RequestParam(required = false) UUID cityId,
+            @RequestParam(required = false) UUID districtId,
             @RequestParam(required = false) String purpose,
             @RequestParam(required = false) Double minPrice,
             @RequestParam(required = false) Double maxPrice,
@@ -32,7 +34,7 @@ public class PropertyController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Property> getProperty(@PathVariable Long id) {
+    public ResponseEntity<Property> getProperty(@PathVariable UUID id) {
         return ResponseEntity.ok(propertyService.getPropertyById(id));
     }
 

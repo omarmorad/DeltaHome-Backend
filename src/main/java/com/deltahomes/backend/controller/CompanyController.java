@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/companies")
@@ -32,7 +33,7 @@ public class CompanyController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Company> getCompany(@PathVariable Long id) {
+    public ResponseEntity<Company> getCompany(@PathVariable UUID id) {
         return ResponseEntity.ok(companyService.getCompanyById(id));
     }
 
@@ -44,21 +45,21 @@ public class CompanyController {
 
     @PostMapping("/{id}/follow")
     public ResponseEntity<Void> followCompany(@AuthenticationPrincipal UserDetails principal,
-                                              @PathVariable Long id) {
+                                              @PathVariable UUID id) {
         followService.follow(currentUser(principal), id);
         return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/{id}/follow")
     public ResponseEntity<Void> unfollowCompany(@AuthenticationPrincipal UserDetails principal,
-                                                @PathVariable Long id) {
+                                                @PathVariable UUID id) {
         followService.unfollow(currentUser(principal), id);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}/is-following")
     public ResponseEntity<Map<String, Boolean>> isFollowing(@AuthenticationPrincipal UserDetails principal,
-                                                            @PathVariable Long id) {
+                                                            @PathVariable UUID id) {
         return ResponseEntity.ok(Map.of("following",
                 followService.isFollowing(currentUser(principal), id)));
     }

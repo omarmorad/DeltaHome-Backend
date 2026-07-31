@@ -7,6 +7,7 @@ import com.deltahomes.backend.entity.enums.EntityType;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * Request/response payloads for the Saved Items & Follow module.
@@ -18,9 +19,9 @@ public final class SocialDtos {
     }
 
     public record SavedItemResponse(
-            Long id,
+            UUID id,
             EntityType entityType,
-            Long entityId,
+            UUID entityId,
             LocalDateTime createdAt
     ) {
         public static SavedItemResponse from(SavedItem item) {
@@ -29,7 +30,7 @@ public final class SocialDtos {
     }
 
     public record CompanySummaryResponse(
-            Long id,
+            UUID id,
             String name,
             CompanyType type,
             String logoUrl,

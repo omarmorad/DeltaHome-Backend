@@ -7,6 +7,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 @Service
 public class CompanyService {
 
@@ -16,7 +18,7 @@ public class CompanyService {
         this.companyRepository = companyRepository;
     }
 
-    public Company getCompanyById(Long id) {
+    public Company getCompanyById(UUID id) {
         return companyRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Company", id));
     }
