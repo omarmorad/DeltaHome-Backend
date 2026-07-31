@@ -1,0 +1,94 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: delta-home-backend
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/deltahomes}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 20000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          lob:
+            non_contextual_creation: true
+    show-sql: false
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+
+  cache:
+    type: redis
+    redis:
+      time-to-live: 3600000
+      cache-null-values: false
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+    default-property-inclusion: non_null
+
+# Meilisearch
+meilisearch:
+  host: ${MEILISEARCH_HOST:http://localhost:7700}
+  api-key: ${MEILISEARCH_API_KEY:}
+
+# Twilio (SMS OTP)
+twilio:
+  account-sid: ${TWILIO_ACCOUNT_SID:}
+  auth-token: ${TWILIO_AUTH_TOKEN:}
+  phone-number: ${TWILIO_PHONE_NUMBER:}
+
+# Firebase (push notifications)
+firebase:
+  config-path: ${FIREBASE_CONFIG_PATH:classpath:firebase-service-account.json}
+
+# Object storage (S3-compatible)
+storage:
+  endpoint: ${STORAGE_ENDPOINT:}
+  access-key: ${STORAGE_ACCESS_KEY:}
+  secret-key: ${STORAGE_SECRET_KEY:}
+  bucket: ${STORAGE_BUCKET:deltahomes-media}
+  region: ${STORAGE_REGION:auto}
+
+# JWT
+jwt:
+  secret: ${JWT_SECRET:dHlwZS5hY2Nlc3MtdG9rZW4uZXhhbXBsZS5jb20uZGVsdGFob21lcy5iYWNrZW5k}
+  expiration-ms: 86400000
+
+# App
+app:
+  base-url: ${APP_BASE_URL:http://localhost:8080}
+  cors:
+    allowed-origins: ${CORS_ORIGINS:*}
+
+logging:
+  level:
+    com.deltahomes: DEBUG
+    org.springframework.security: INFO
+    org.hibernate.SQL: WARN
