@@ -50,10 +50,13 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/v1/auth/logout", "/api/v1/auth/me").authenticated()
                 .requestMatchers("/api/v1/auth/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/v1/properties", "/api/v1/properties/*").permitAll()
+                .requestMatchers(HttpMethod.GET,
+                        "/api/v1/properties", "/api/v1/properties/*",
+                        "/api/v1/companies", "/api/v1/companies/*",
+                        "/api/v1/cities", "/api/v1/districts",
+                        "/api/v1/services", "/api/v1/features", "/api/v1/plans",
+                        "/api/v1/reviews", "/api/v1/reviews/*").permitAll()
                 .requestMatchers("/api/v1/search").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/v1/companies/*").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/v1/reviews/**").permitAll()
                 .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
