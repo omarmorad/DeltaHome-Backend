@@ -20,7 +20,7 @@ spring:
     hibernate:
       # DEV only: Hibernate creates/updates the schema. Switch to 'validate' once
       # Flyway migrations under db/migration are in place (see flyway below).
-      ddl-auto: none
+      ddl-auto: update
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
