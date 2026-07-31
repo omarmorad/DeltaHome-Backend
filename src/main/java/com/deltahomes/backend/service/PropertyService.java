@@ -1,14 +1,19 @@
 package com.deltahomes.backend.service;
 
+import com.deltahomes.backend.dto.common.PaginatedResponse;
+import com.deltahomes.backend.dto.summary.PropertySummary;
+import com.deltahomes.backend.entity.enums.PropertyPurpose;
 import com.deltahomes.backend.entity.enums.PropertyStatus;
 import com.deltahomes.backend.entity.property.Property;
 import com.deltahomes.backend.exception.ResourceNotFoundException;
 import com.deltahomes.backend.repository.PropertyRepository;
+import com.deltahomes.backend.util.PageUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Service
@@ -20,8 +25,20 @@ public class PropertyService {
         this.propertyRepository = propertyRepository;
     }
 
-    public Page<Property> getPublishedProperties(Pageable pageable) {
-        return propertyRepository.findByStatus(PropertyStatus.PUBLISHED, pageable);
+    public PaginatedResponse<PropertySummary> index(String q, UUID cityId, UUID districtId,
+                                                    PropertyPurpose purpose, BigDecimal minPrice,
+                                                    BigDecimal maxPrice, PropertyStatus status,
+                                                    Pageable pageable) {
+        Page<PropertySummary> page = propertyRepository.searchIndex(
+                status == null ? null : status.name(),
+                q == null ? "" : q.trim(),
+                cityId,
+                districtId,
+                purpose == null ? null : purpose.name(),
+                minPrice,
+                maxPrice,
+                PageUtils.normalizeSort(pageable));
+        return PaginatedResponse.from(page);
     }
 
     public Property getPropertyById(UUID id) {
@@ -44,12 +61,5 @@ public class PropertyService {
         existing.setPrice(updates.getPrice());
         existing.setStatus(updates.getStatus());
         return propertyRepository.save(existing);
-    }
-
-    public Page<Property> searchProperties(UUID cityId, UUID districtId,
-                                           String purpose, Double minPrice,
-                                           Double maxPrice, Pageable pageable) {
-        return propertyRepository.searchProperties(
-                cityId, districtId, purpose, minPrice, maxPrice, pageable);
     }
 }

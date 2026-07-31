@@ -1,5 +1,6 @@
 package com.deltahomes.backend.service;
 
+import com.deltahomes.backend.dto.common.PaginatedResponse;
 import com.deltahomes.backend.dto.social.SocialDtos;
 import com.deltahomes.backend.entity.SavedItem;
 import com.deltahomes.backend.entity.enums.EntityType;
@@ -8,10 +9,11 @@ import com.deltahomes.backend.exception.BusinessException;
 import com.deltahomes.backend.repository.CompanyRepository;
 import com.deltahomes.backend.repository.PropertyRepository;
 import com.deltahomes.backend.repository.SavedItemRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -48,14 +50,13 @@ public class SavedItemService {
     }
 
     @Transactional(readOnly = true)
-    public List<SocialDtos.SavedItemResponse> listSaved(User user, EntityType entityType) {
+    public PaginatedResponse<SocialDtos.SavedItemResponse> listSaved(User user, EntityType entityType,
+                                                                     Pageable pageable) {
         if (entityType == null) {
             throw new BusinessException("entityType is required");
         }
-        return savedItemRepository.findByUserIdAndEntityType(user.getId(), entityType)
-                .stream()
-                .map(SocialDtos.SavedItemResponse::from)
-                .toList();
+        Page<SavedItem> page = savedItemRepository.findByUserIdAndEntityType(user.getId(), entityType, pageable);
+        return PaginatedResponse.from(page.map(SocialDtos.SavedItemResponse::from));
     }
 
     public boolean isSaved(User user, EntityType entityType, UUID entityId) {

@@ -1,11 +1,19 @@
 package com.deltahomes.backend.service;
 
+import com.deltahomes.backend.dto.common.PaginatedResponse;
+import com.deltahomes.backend.dto.summary.ReviewSummary;
 import com.deltahomes.backend.entity.Review;
+import com.deltahomes.backend.entity.enums.EntityType;
 import com.deltahomes.backend.exception.BusinessException;
 import com.deltahomes.backend.repository.AppointmentRepository;
 import com.deltahomes.backend.repository.ReviewRepository;
+import com.deltahomes.backend.util.PageUtils;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 @Service
 public class ReviewService {
@@ -17,6 +25,18 @@ public class ReviewService {
                          AppointmentRepository appointmentRepository) {
         this.reviewRepository = reviewRepository;
         this.appointmentRepository = appointmentRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public PaginatedResponse<ReviewSummary> index(String q, EntityType entityType, UUID entityId,
+                                                  Integer minRating, Pageable pageable) {
+        Page<ReviewSummary> page = reviewRepository.searchIndex(
+                q == null ? "" : q.trim(),
+                entityType == null ? null : entityType.name(),
+                entityId,
+                minRating,
+                PageUtils.normalizeSort(pageable));
+        return PaginatedResponse.from(page);
     }
 
     @Transactional
