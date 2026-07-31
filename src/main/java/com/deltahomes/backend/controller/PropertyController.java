@@ -1,12 +1,16 @@
 package com.deltahomes.backend.controller;
 
+import com.deltahomes.backend.dto.common.PaginatedResponse;
+import com.deltahomes.backend.dto.summary.PropertySummary;
+import com.deltahomes.backend.entity.enums.PropertyPurpose;
+import com.deltahomes.backend.entity.enums.PropertyStatus;
 import com.deltahomes.backend.entity.property.Property;
 import com.deltahomes.backend.service.PropertyService;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @RestController
@@ -20,17 +24,17 @@ public class PropertyController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<Property>> searchProperties(
+    public ResponseEntity<PaginatedResponse<PropertySummary>> index(
+            @RequestParam(required = false) String q,
             @RequestParam(required = false) UUID cityId,
             @RequestParam(required = false) UUID districtId,
-            @RequestParam(required = false) String purpose,
-            @RequestParam(required = false) Double minPrice,
-            @RequestParam(required = false) Double maxPrice,
+            @RequestParam(required = false) PropertyPurpose purpose,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
             Pageable pageable) {
-
-        Page<Property> properties = propertyService.searchProperties(
-                cityId, districtId, purpose, minPrice, maxPrice, pageable);
-        return ResponseEntity.ok(properties);
+        return ResponseEntity.ok(propertyService.index(
+                q, cityId, districtId, purpose, minPrice, maxPrice,
+                PropertyStatus.PUBLISHED, pageable));
     }
 
     @GetMapping("/{id}")

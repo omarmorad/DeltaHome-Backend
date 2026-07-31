@@ -1,12 +1,16 @@
 package com.deltahomes.backend.controller;
 
+import com.deltahomes.backend.dto.common.PaginatedResponse;
 import com.deltahomes.backend.dto.social.SocialDtos;
+import com.deltahomes.backend.dto.summary.CompanySummary;
 import com.deltahomes.backend.entity.company.Company;
+import com.deltahomes.backend.entity.enums.CompanyType;
 import com.deltahomes.backend.entity.user.User;
 import com.deltahomes.backend.exception.BusinessException;
 import com.deltahomes.backend.repository.UserRepository;
 import com.deltahomes.backend.service.CompanyService;
 import com.deltahomes.backend.service.FollowService;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -30,6 +34,14 @@ public class CompanyController {
         this.companyService = companyService;
         this.followService = followService;
         this.userRepository = userRepository;
+    }
+
+    @GetMapping
+    public ResponseEntity<PaginatedResponse<CompanySummary>> index(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) CompanyType type,
+            Pageable pageable) {
+        return ResponseEntity.ok(companyService.index(q, type, true, pageable));
     }
 
     @GetMapping("/{id}")
