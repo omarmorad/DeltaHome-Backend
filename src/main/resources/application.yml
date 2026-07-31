@@ -119,6 +119,11 @@ app:
     name: ${ADMIN_NAME:Delta Admin}
     password: ${ADMIN_PASSWORD:admin123}
     permanent-otp: ${ADMIN_PERMANENT_OTP:112231}
+  seed:
+    # Demo data seeder: fills every table up to `target` (default 5) realistic
+    # records. Idempotent - safe to leave enabled.
+    enabled: ${SEED_ENABLED:true}
+    target: ${SEED_TARGET:5}
 
 logging:
   level:
