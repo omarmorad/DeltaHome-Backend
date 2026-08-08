@@ -7,7 +7,8 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.UUID;
 
 @Getter
@@ -22,11 +23,11 @@ public abstract class BaseEntity {
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt = OffsetDateTime.now(ZoneOffset.UTC);
 
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
 
     /**
      * Assigned-or-auto id generation: a caller may pre-assign a deterministic
@@ -37,6 +38,12 @@ public abstract class BaseEntity {
     void prePersist() {
         if (id == null) {
             id = UUID.randomUUID();
+        }
+        if (createdAt == null) {
+            createdAt = OffsetDateTime.now(ZoneOffset.UTC);
+        }
+        if (updatedAt == null) {
+            updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
         }
     }
 }
