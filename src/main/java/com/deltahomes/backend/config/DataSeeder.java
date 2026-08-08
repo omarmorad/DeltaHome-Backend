@@ -97,7 +97,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -325,15 +325,15 @@ public class DataSeeder implements CommandLineRunner {
     private List<Feature> seedFeatures() {
         List<Feature> result = new ArrayList<>();
         seed(result, featureRepository, "30000000-0000-0000-0000-000000000001",
-                () -> feature("Elevator", "مصعد", "BOOLEAN"));
+                () -> feature("Elevator", "مصعد", "transport", "elevator"));
         seed(result, featureRepository, "30000000-0000-0000-0000-000000000002",
-                () -> feature("Private Garden", "حديقة خاصة", "BOOLEAN"));
+                () -> feature("Private Garden", "حديقة خاصة", "leisure", "garden"));
         seed(result, featureRepository, "30000000-0000-0000-0000-000000000003",
-                () -> feature("Air Conditioning", "تكييف مركزي", "BOOLEAN"));
+                () -> feature("Air Conditioning", "تكييف مركزي", "fitness", "ac"));
         seed(result, featureRepository, "30000000-0000-0000-0000-000000000004",
-                () -> feature("Parking", "جراج خاص", "BOOLEAN"));
+                () -> feature("Parking", "جراج خاص", "transport", "parking"));
         seed(result, featureRepository, "30000000-0000-0000-0000-000000000005",
-                () -> feature("Roof Terrace", "سطح", "BOOLEAN"));
+                () -> feature("Roof Terrace", "سطح", "leisure", "terrace"));
         return result;
     }
 
@@ -712,7 +712,7 @@ public class DataSeeder implements CommandLineRunner {
         Property groundFloor = property(properties, "Ground Floor with Garden - Toriel");
         Property niceApartment = property(properties, "Nice Apartment");
 
-        LocalDateTime now = LocalDateTime.now();
+        OffsetDateTime now = OffsetDateTime.now();
         List<Appointment> result = new ArrayList<>();
         seed(result, appointmentRepository, "a9000000-0000-0000-0000-000000000001",
                 () -> appointment(duplex, customerOne, ownerOne,
@@ -802,7 +802,7 @@ public class DataSeeder implements CommandLineRunner {
         User ownerOne = userByRole(users, "owner1@example.com");
 
         List<BroadcastDelivery> rows = new ArrayList<>();
-        LocalDateTime now = LocalDateTime.now();
+        OffsetDateTime now = OffsetDateTime.now();
         seed(rows, broadcastDeliveryRepository, "b2000000-0000-0000-0000-000000000001",
                 () -> delivery(broadcasts.get(0), customerOne, true, true, now.minusDays(1)));
         seed(rows, broadcastDeliveryRepository, "b2000000-0000-0000-0000-000000000002",
@@ -1063,11 +1063,12 @@ public class DataSeeder implements CommandLineRunner {
         return district;
     }
 
-    private static Feature feature(String name, String nameAr, String dataType) {
+    private static Feature feature(String name, String nameAr, String nameEn, String icon) {
         Feature feature = new Feature();
         feature.setName(name);
         feature.setNameAr(nameAr);
-        feature.setDataType(dataType);
+        feature.setNameEn(nameEn);
+        feature.setIcon(icon);
         return feature;
     }
 
@@ -1080,13 +1081,13 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private static SubscriptionPlan plan(String name, SubscriptionTier tier, String price,
-                                         int listingCap, int broadcastCap) {
+                                         int listingQuota, int broadcastQuota) {
         SubscriptionPlan plan = new SubscriptionPlan();
         plan.setName(name);
         plan.setTier(tier);
         plan.setPrice(new BigDecimal(price));
-        plan.setListingCap(listingCap);
-        plan.setBroadcastCap(broadcastCap);
+        plan.setListingQuota(listingQuota);
+        plan.setBroadcastQuota(broadcastQuota);
         plan.setIsActive(true);
         return plan;
     }
@@ -1210,7 +1211,7 @@ public class DataSeeder implements CommandLineRunner {
         verification.setDocumentUrl("https://picsum.photos/seed/doc-" + user.getEmail().substring(0, user.getEmail().indexOf('@')) + "/600/800");
         verification.setStatus(status);
         verification.setReviewedBy(reviewedBy);
-        verification.setReviewedAt(status == VerificationStatus.ACCEPTED ? LocalDateTime.now().minusDays(3) : null);
+        verification.setReviewedAt(status == VerificationStatus.ACCEPTED ? OffsetDateTime.now().minusDays(3) : null);
         return verification;
     }
 
@@ -1252,7 +1253,7 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private static Appointment appointment(Property property, User customer, User owner,
-                                           LocalDateTime slot, AppointmentStatus status, String note) {
+                                           OffsetDateTime slot, AppointmentStatus status, String note) {
         Appointment appointment = new Appointment();
         appointment.setProperty(property);
         appointment.setCustomer(customer);
@@ -1286,7 +1287,7 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private static BroadcastDelivery delivery(Broadcast broadcast, User user, boolean opened,
-                                              boolean clicked, LocalDateTime openedAt) {
+                                              boolean clicked, OffsetDateTime openedAt) {
         BroadcastDelivery delivery = new BroadcastDelivery();
         delivery.setBroadcast(broadcast);
         delivery.setUser(user);
