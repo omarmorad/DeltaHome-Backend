@@ -9,6 +9,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
  * overwritten afterwards, so any edits made in the DB are preserved.
  */
 @Component
+@Order(Ordered.HIGHEST_PRECEDENCE)
 public class AdminAccountInitializer implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(AdminAccountInitializer.class);
@@ -31,6 +34,9 @@ public class AdminAccountInitializer implements ApplicationRunner {
 
     @Value("${app.admin.name:Delta Admin}")
     private String adminName;
+
+    @Value("${app.admin.email:admin@deltahomes.app}")
+    private String adminEmail;
 
     @Value("${app.admin.password:admin123}")
     private String adminPassword;
@@ -47,12 +53,22 @@ public class AdminAccountInitializer implements ApplicationRunner {
             return;
         }
         if (userRepository.existsByPhone(adminPhone)) {
+            // Self-heal: older versions created the admin without an email.
+            // Backfill it now so email-based admin login/OTP works.
+            userRepository.findByPhone(adminPhone).ifPresent(existing -> {
+                if ((existing.getEmail() == null || existing.getEmail().isBlank()) && !adminEmail.isBlank()) {
+                    existing.setEmail(adminEmail);
+                    userRepository.save(existing);
+                    log.info("Backfilled admin email to {}", adminEmail);
+                }
+            });
             return;
         }
 
         User user = new User();
         user.setName(adminName);
         user.setPhone(adminPhone);
+        user.setEmail(adminEmail);
         user.setPasswordHash(passwordEncoder.encode(adminPassword));
         user.setRole(UserRole.ADMIN);
         user.setStatus(UserStatus.ACTIVE);

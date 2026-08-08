@@ -90,6 +90,8 @@ import com.deltahomes.backend.repository.VerificationRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -116,6 +118,7 @@ import java.util.function.Supplier;
  * Disable with {@code app.seed.enabled=false}.
  */
 @Component
+@Order(Ordered.LOWEST_PRECEDENCE)
 public class DataSeeder implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DataSeeder.class);
@@ -161,6 +164,9 @@ public class DataSeeder implements CommandLineRunner {
 
     @Value("${app.seed.target:5}")
     private int target;
+
+    @Value("${app.admin.phone:01026962089}")
+    private String adminPhone;
 
     public DataSeeder(UserRepository userRepository,
                       CityRepository cityRepository,
@@ -355,15 +361,15 @@ public class DataSeeder implements CommandLineRunner {
     private List<SubscriptionPlan> seedPlans() {
         List<SubscriptionPlan> result = new ArrayList<>();
         seed(result, planRepository, "50000000-0000-0000-0000-000000000001",
-                () -> plan("Basic", SubscriptionTier.BASIC, "0", 1, 0));
+                () -> plan("Basic", "أساسي", SubscriptionTier.BASIC, "0", 1, 0));
         seed(result, planRepository, "50000000-0000-0000-0000-000000000002",
-                () -> plan("Silver", SubscriptionTier.BASIC, "299", 5, 5));
+                () -> plan("Silver", "فضي", SubscriptionTier.BASIC, "299", 5, 5));
         seed(result, planRepository, "50000000-0000-0000-0000-000000000003",
-                () -> plan("Gold", SubscriptionTier.PREMIUM, "599", 20, 20));
+                () -> plan("Gold", "ذهبي", SubscriptionTier.PREMIUM, "599", 20, 20));
         seed(result, planRepository, "50000000-0000-0000-0000-000000000004",
-                () -> plan("Platinum", SubscriptionTier.PREMIUM, "999", 50, 50));
+                () -> plan("Platinum", "بلاتيني", SubscriptionTier.PREMIUM, "999", 50, 50));
         seed(result, planRepository, "50000000-0000-0000-0000-000000000005",
-                () -> plan("Enterprise", SubscriptionTier.ENTERPRISE, "2499", 200, 200));
+                () -> plan("Enterprise", "مؤسسات", SubscriptionTier.ENTERPRISE, "2499", 200, 200));
         return result;
     }
 
@@ -388,17 +394,17 @@ public class DataSeeder implements CommandLineRunner {
 
     private List<User> seedUsers(List<City> cities) {
         List<User> users = new ArrayList<>();
-        users.add(ensureUser("Customer One", "01011111111", "customer1@example.com", UserRole.CUSTOMER));
-        users.add(ensureUser("Customer Two", "01022222222", "customer2@example.com", UserRole.CUSTOMER));
-        users.add(ensureUser("Owner One", "01033333333", "owner1@example.com", UserRole.OWNER));
-        users.add(ensureUser("Owner Two", "01044444444", "owner2@example.com", UserRole.OWNER));
-        users.add(ensureUser("Office One", "01055555555", "office1@example.com", UserRole.OFFICE));
-        users.add(ensureUser("Office Two", "01066666666", "office2@example.com", UserRole.OFFICE));
-        users.add(ensureUser("Company One", "01077777777", "company1@example.com", UserRole.COMPANY));
-        users.add(ensureUser("Company Two", "01088888888", "company2@example.com", UserRole.COMPANY));
-        users.add(ensureUser("Technician One", "01099999999", "technician1@example.com", UserRole.TECHNICIAN));
-        users.add(ensureUser("Technician Two", "01000000000", "technician2@example.com", UserRole.TECHNICIAN));
-        User admin = userRepository.findByPhone("01026962089").orElseGet(() ->
+        users.add(ensureUser("أحمد حسن", "01011111111", "ahmed.hassan@gmail.com", UserRole.CUSTOMER));
+        users.add(ensureUser("سارة علي", "01022222222", "sara.ali@gmail.com", UserRole.CUSTOMER));
+        users.add(ensureUser("محمود عبد الله", "01033333333", "mahmoud.abdallah@gmail.com", UserRole.OWNER));
+        users.add(ensureUser("هشام إبراهيم", "01044444444", "hisham.ibrahim@yahoo.com", UserRole.OWNER));
+        users.add(ensureUser("كريم مصطفى", "01055555555", "karim.mostafa@gmail.com", UserRole.OFFICE));
+        users.add(ensureUser("منى السيد", "01066666666", "mona.elsayed@outlook.com", UserRole.OFFICE));
+        users.add(ensureUser("خالد رجب", "01077777777", "khaled.ragab@gmail.com", UserRole.COMPANY));
+        users.add(ensureUser("نورهان عادل", "01088888888", "nourhan.adel@gmail.com", UserRole.COMPANY));
+        users.add(ensureUser("عمرو سعيد", "01099999999", "amr.said@yahoo.com", UserRole.TECHNICIAN));
+        users.add(ensureUser("إيهاب فتحي", "01556789012", "ehab.fathy@gmail.com", UserRole.TECHNICIAN));
+        User admin = userRepository.findByPhone(adminPhone).orElseGet(() ->
                 userRepository.findAll().stream()
                         .filter(u -> u.getRole() == UserRole.ADMIN)
                         .findFirst()
@@ -424,9 +430,9 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private List<Company> seedCompanies(List<User> users) {
-        User companyOne = userByRole(users, "company1@example.com");
-        User companyTwo = userByRole(users, "company2@example.com");
-        User officeOne = userByRole(users, "office1@example.com");
+        User companyOne = userByRole(users, "khaled.ragab@gmail.com");
+        User companyTwo = userByRole(users, "nourhan.adel@gmail.com");
+        User officeOne = userByRole(users, "karim.mostafa@gmail.com");
 
         List<Company> result = new ArrayList<>();
         // Existing bootstrap company, kept by its fixed UUID.
@@ -465,18 +471,27 @@ public class DataSeeder implements CommandLineRunner {
                 () -> cs(nile, service(services, "Plumbing Works")));
         seed(rows, companyServiceRepository, "93000000-0000-0000-0000-000000000005",
                 () -> cs(star, service(services, "Electrical Works")));
+        seed(rows, companyServiceRepository, "93000000-0000-0000-0000-000000000006",
+                () -> cs(star, service(services, "Interior Painting")));
+        seed(rows, companyServiceRepository, "93000000-0000-0000-0000-000000000007",
+                () -> cs(nile, service(services, "Electrical Works")));
+        seed(rows, companyServiceRepository, "93000000-0000-0000-0000-000000000008",
+                () -> cs(deltaFinishing, service(services, "Facade Cladding")));
+        seed(rows, companyServiceRepository, "93000000-0000-0000-0000-000000000009",
+                () -> cs(elDelta, service(services, "Flooring & Tiling")));
     }
 
     private void seedCompanyStaff(List<Company> companies, List<User> users) {
         Company deltaFinishing = company(companies, "Delta Finishing Co.");
         Company elDelta = company(companies, "El-Delta Finishing Group");
+        Company star = company(companies, "Damietta Star Finishing");
         Company nile = company(companies, "Nile Maintenance & Services");
         Company prime = company(companies, "Delta Prime Real Estate");
 
-        User companyTwo = userByRole(users, "company2@example.com");
-        User techOne = userByRole(users, "technician1@example.com");
-        User techTwo = userByRole(users, "technician2@example.com");
-        User officeTwo = userByRole(users, "office2@example.com");
+        User companyTwo = userByRole(users, "nourhan.adel@gmail.com");
+        User techOne = userByRole(users, "amr.said@yahoo.com");
+        User techTwo = userByRole(users, "ehab.fathy@gmail.com");
+        User officeTwo = userByRole(users, "mona.elsayed@outlook.com");
 
         List<CompanyStaff> rows = new ArrayList<>();
         seed(rows, companyStaffRepository, "94000000-0000-0000-0000-000000000001",
@@ -489,6 +504,12 @@ public class DataSeeder implements CommandLineRunner {
                 () -> staff(nile, techOne, "Senior Technician"));
         seed(rows, companyStaffRepository, "94000000-0000-0000-0000-000000000005",
                 () -> staff(prime, officeTwo, "Sales Agent"));
+        seed(rows, companyStaffRepository, "94000000-0000-0000-0000-000000000006",
+                () -> staff(star, techTwo, "Electrician"));
+        seed(rows, companyStaffRepository, "94000000-0000-0000-0000-000000000007",
+                () -> staff(deltaFinishing, officeTwo, "Client Relations"));
+        seed(rows, companyStaffRepository, "94000000-0000-0000-0000-000000000008",
+                () -> staff(prime, techOne, "Property Inspector"));
     }
 
     private void seedCompanyPortfolio(List<Company> companies) {
@@ -521,8 +542,8 @@ public class DataSeeder implements CommandLineRunner {
     // ------------------------------------------------------------------
 
     private List<Property> seedProperties(List<User> users, List<City> cities, List<District> districts) {
-        User ownerOne = userByRole(users, "owner1@example.com");
-        User ownerTwo = userByRole(users, "owner2@example.com");
+        User ownerOne = userByRole(users, "mahmoud.abdallah@gmail.com");
+        User ownerTwo = userByRole(users, "hisham.ibrahim@yahoo.com");
         User admin = admin(users);
 
         City mansoura = city(cities, "Mansoura");
@@ -537,7 +558,7 @@ public class DataSeeder implements CommandLineRunner {
 
         List<Property> result = new ArrayList<>();
         // The existing bootstrap property is appended LAST so the crafted rows
-        // (indexes 0-4) receive the five property images / videos.
+        // receive the property images / videos in seed order.
         seed(result, propertyRepository, "90000000-0000-0000-0000-000000000001",
                 () -> property(ownerOne, "Sea View Apartment - Ras El Bar", "15000.00",
                         PropertyPurpose.RENT, "APARTMENT", rasElBar, rasElBarCenter,
@@ -558,6 +579,14 @@ public class DataSeeder implements CommandLineRunner {
                 () -> property(ownerOne, "Ground Floor with Garden - Toriel", "1850000.00",
                         PropertyPurpose.SALE, "APARTMENT", mansoura, toriel,
                         "31.0280", "31.3620", FinishingLevel.FINISHED, false));
+        seed(result, propertyRepository, "90000000-0000-0000-0000-000000000006",
+                () -> property(ownerOne, "Furnished Apartment - New Damietta Corniche", "4500.00",
+                        PropertyPurpose.RENT, "APARTMENT", newDamietta, corniche,
+                        "31.4440", "31.6720", FinishingLevel.FINISHED, false));
+        seed(result, propertyRepository, "90000000-0000-0000-0000-000000000007",
+                () -> property(ownerTwo, "Beach Villa - Ras El Bar", "6800000.00",
+                        PropertyPurpose.SALE, "VILLA", rasElBar, rasElBarCenter,
+                        "31.5250", "31.8410", FinishingLevel.LUXURY, true));
         seed(result, propertyRepository, "44444444-4444-4444-4444-444444444444",
                 () -> property(admin, "Nice Apartment", "1250000.00",
                         PropertyPurpose.SALE, "APARTMENT", mansoura, downtown,
@@ -567,10 +596,10 @@ public class DataSeeder implements CommandLineRunner {
 
     private void seedPropertyImages(List<Property> properties) {
         List<PropertyImage> rows = new ArrayList<>();
-        String[] seeds = {"delta1", "delta2", "delta3", "delta4", "delta5"};
-        for (int i = 0; i < 5 && i < properties.size(); i++) {
+        String[] seeds = {"delta1", "delta2", "delta3", "delta4", "delta5", "delta6", "delta7", "delta8"};
+        for (int i = 0; i < seeds.length && i < properties.size(); i++) {
             Property p = properties.get(i);
-            String id = "91000000-0000-0000-0000-00000000000" + (i + 1);
+            String id = "91000000-0000-0000-0000-" + String.format("%012d", i + 1);
             String seedVal = seeds[i];
             seed(rows, propertyImageRepository, id,
                     () -> image(p, "https://picsum.photos/seed/" + seedVal + "/800/600", 1));
@@ -579,10 +608,10 @@ public class DataSeeder implements CommandLineRunner {
 
     private void seedPropertyVideos(List<Property> properties) {
         List<PropertyVideo> rows = new ArrayList<>();
-        for (int i = 0; i < 5 && i < properties.size(); i++) {
+        for (int i = 0; i < properties.size(); i++) {
             Property p = properties.get(i);
             int videoIdx = i + 1;
-            String id = "92000000-0000-0000-0000-00000000000" + videoIdx;
+            String id = "92000000-0000-0000-0000-" + String.format("%012d", videoIdx);
             seed(rows, propertyVideoRepository, id,
                     () -> video(p, "https://www.w3schools.com/html/mov_bbb.mp4",
                             "https://picsum.photos/seed/video" + videoIdx + "/640/360", 35));
@@ -594,11 +623,11 @@ public class DataSeeder implements CommandLineRunner {
     // ------------------------------------------------------------------
 
     private void seedVerifications(List<User> users) {
-        User companyOne = userByRole(users, "company1@example.com");
-        User companyTwo = userByRole(users, "company2@example.com");
-        User ownerOne = userByRole(users, "owner1@example.com");
-        User techOne = userByRole(users, "technician1@example.com");
-        User officeOne = userByRole(users, "office1@example.com");
+        User companyOne = userByRole(users, "khaled.ragab@gmail.com");
+        User companyTwo = userByRole(users, "nourhan.adel@gmail.com");
+        User ownerOne = userByRole(users, "mahmoud.abdallah@gmail.com");
+        User techOne = userByRole(users, "amr.said@yahoo.com");
+        User officeOne = userByRole(users, "karim.mostafa@gmail.com");
         User admin = admin(users);
 
         List<Verification> rows = new ArrayList<>();
@@ -630,13 +659,15 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private List<Conversation> seedConversations(List<User> users) {
-        User customerOne = userByRole(users, "customer1@example.com");
-        User customerTwo = userByRole(users, "customer2@example.com");
-        User ownerOne = userByRole(users, "owner1@example.com");
-        User ownerTwo = userByRole(users, "owner2@example.com");
-        User companyOne = userByRole(users, "company1@example.com");
-        User companyTwo = userByRole(users, "company2@example.com");
-        User techOne = userByRole(users, "technician1@example.com");
+        User customerOne = userByRole(users, "ahmed.hassan@gmail.com");
+        User customerTwo = userByRole(users, "sara.ali@gmail.com");
+        User ownerOne = userByRole(users, "mahmoud.abdallah@gmail.com");
+        User ownerTwo = userByRole(users, "hisham.ibrahim@yahoo.com");
+        User companyOne = userByRole(users, "khaled.ragab@gmail.com");
+        User companyTwo = userByRole(users, "nourhan.adel@gmail.com");
+        User techOne = userByRole(users, "amr.said@yahoo.com");
+        User officeOne = userByRole(users, "karim.mostafa@gmail.com");
+        User techTwo = userByRole(users, "ehab.fathy@gmail.com");
 
         List<Conversation> result = new ArrayList<>();
         seed(result, conversationRepository, "a6000000-0000-0000-0000-000000000001",
@@ -649,33 +680,74 @@ public class DataSeeder implements CommandLineRunner {
                 () -> conversation(customerTwo, companyTwo, "We can send an engineer."));
         seed(result, conversationRepository, "a6000000-0000-0000-0000-000000000005",
                 () -> conversation(customerOne, techOne, "I will call you in the morning."));
+        seed(result, conversationRepository, "a6000000-0000-0000-0000-000000000006",
+                () -> conversation(customerTwo, officeOne, "We can arrange the viewing."));
+        seed(result, conversationRepository, "a6000000-0000-0000-0000-000000000007",
+                () -> conversation(ownerOne, techTwo, "I'll be there Thursday morning."));
         return result;
     }
 
     private void seedMessages(List<Conversation> conversations, List<User> users) {
-        User customerOne = userByRole(users, "customer1@example.com");
-        User customerTwo = userByRole(users, "customer2@example.com");
-        User ownerOne = userByRole(users, "owner1@example.com");
-        User companyOne = userByRole(users, "company1@example.com");
+        User customerOne = userByRole(users, "ahmed.hassan@gmail.com");
+        User customerTwo = userByRole(users, "sara.ali@gmail.com");
+        User ownerOne = userByRole(users, "mahmoud.abdallah@gmail.com");
+        User ownerTwo = userByRole(users, "hisham.ibrahim@yahoo.com");
+        User companyOne = userByRole(users, "khaled.ragab@gmail.com");
+        User companyTwo = userByRole(users, "nourhan.adel@gmail.com");
+        User techOne = userByRole(users, "amr.said@yahoo.com");
+        User officeOne = userByRole(users, "karim.mostafa@gmail.com");
+        User techTwo = userByRole(users, "ehab.fathy@gmail.com");
 
         List<Message> rows = new ArrayList<>();
         seed(rows, messageRepository, "a7000000-0000-0000-0000-000000000001",
-                () -> message(conversations.get(0), customerOne, "Is the apartment still available?"));
+                () -> message(conversation(conversations, customerOne, ownerOne),
+                        customerOne, "Is the apartment still available?"));
         seed(rows, messageRepository, "a7000000-0000-0000-0000-000000000002",
-                () -> message(conversations.get(0), ownerOne, "Yes, you can visit tomorrow."));
+                () -> message(conversation(conversations, customerOne, ownerOne),
+                        ownerOne, "Yes, you can visit tomorrow."));
         seed(rows, messageRepository, "a7000000-0000-0000-0000-000000000003",
-                () -> message(conversations.get(1), customerOne, "Do you provide full finishing packages?"));
+                () -> message(conversation(conversations, customerOne, companyOne),
+                        customerOne, "Do you provide full finishing packages?"));
         seed(rows, messageRepository, "a7000000-0000-0000-0000-000000000004",
-                () -> message(conversations.get(1), companyOne, "Yes, including materials."));
+                () -> message(conversation(conversations, customerOne, companyOne),
+                        companyOne, "Yes, including materials."));
         seed(rows, messageRepository, "a7000000-0000-0000-0000-000000000005",
-                () -> message(conversations.get(2), customerTwo, "What is the rental price?"));
+                () -> message(conversation(conversations, customerTwo, ownerTwo),
+                        customerTwo, "What is the rental price?"));
+        seed(rows, messageRepository, "a7000000-0000-0000-0000-000000000006",
+                () -> message(conversation(conversations, customerTwo, ownerTwo),
+                        ownerTwo, "The price is negotiable."));
+        seed(rows, messageRepository, "a7000000-0000-0000-0000-000000000007",
+                () -> message(conversation(conversations, customerTwo, companyTwo),
+                        customerTwo, "Do you handle emergency plumbing?"));
+        seed(rows, messageRepository, "a7000000-0000-0000-0000-000000000008",
+                () -> message(conversation(conversations, customerTwo, companyTwo),
+                        companyTwo, "Yes, we can send an engineer today."));
+        seed(rows, messageRepository, "a7000000-0000-0000-0000-000000000009",
+                () -> message(conversation(conversations, customerOne, techOne),
+                        customerOne, "I need a quick electrical checkup."));
+        seed(rows, messageRepository, "a7000000-0000-0000-0000-000000000010",
+                () -> message(conversation(conversations, customerOne, techOne),
+                        techOne, "I will call you in the morning."));
+        seed(rows, messageRepository, "a7000000-0000-0000-0000-000000000011",
+                () -> message(conversation(conversations, customerTwo, officeOne),
+                        customerTwo, "I'm looking for a rental in New Damietta."));
+        seed(rows, messageRepository, "a7000000-0000-0000-0000-000000000012",
+                () -> message(conversation(conversations, customerTwo, officeOne),
+                        officeOne, "We can arrange the viewing."));
+        seed(rows, messageRepository, "a7000000-0000-0000-0000-000000000013",
+                () -> message(conversation(conversations, ownerOne, techTwo),
+                        ownerOne, "Can you check the electrical wiring this week?"));
+        seed(rows, messageRepository, "a7000000-0000-0000-0000-000000000014",
+                () -> message(conversation(conversations, ownerOne, techTwo),
+                        techTwo, "I'll be there Thursday morning."));
     }
 
     private void seedNotifications(List<User> users) {
-        User customerOne = userByRole(users, "customer1@example.com");
-        User customerTwo = userByRole(users, "customer2@example.com");
-        User ownerOne = userByRole(users, "owner1@example.com");
-        User companyOne = userByRole(users, "company1@example.com");
+        User customerOne = userByRole(users, "ahmed.hassan@gmail.com");
+        User customerTwo = userByRole(users, "sara.ali@gmail.com");
+        User ownerOne = userByRole(users, "mahmoud.abdallah@gmail.com");
+        User companyOne = userByRole(users, "khaled.ragab@gmail.com");
 
         List<Notification> rows = new ArrayList<>();
         seed(rows, notificationRepository, "a8000000-0000-0000-0000-000000000001",
@@ -696,15 +768,25 @@ public class DataSeeder implements CommandLineRunner {
                         EntityType.PROPERTY, "90000000-0000-0000-0000-000000000005", true));
         seed(rows, notificationRepository, "a8000000-0000-0000-0000-000000000005",
                 () -> notification(companyOne, "New follower",
-                        "Customer One started following your company.", NotificationType.SYSTEM,
+                        "A new customer started following your company.", NotificationType.SYSTEM,
                         EntityType.COMPANY, "80000000-0000-0000-0000-000000000001", false));
+        seed(rows, notificationRepository, "a8000000-0000-0000-0000-000000000006",
+                () -> notification(customerOne, "Appointment completed",
+                        "Your visit to the Sea View Apartment is done - consider leaving a review.",
+                        NotificationType.PERSONAL, EntityType.PROPERTY,
+                        "90000000-0000-0000-0000-000000000001", true));
+        seed(rows, notificationRepository, "a8000000-0000-0000-0000-000000000007",
+                () -> notification(customerTwo, "Broadcast from Damietta Star Finishing",
+                        "New Year renovation deal - book now and get free electrical works.",
+                        NotificationType.MARKETING, EntityType.COMPANY,
+                        "80000000-0000-0000-0000-000000000002", false));
     }
 
     private List<Appointment> seedAppointments(List<Property> properties, List<User> users) {
-        User customerOne = userByRole(users, "customer1@example.com");
-        User customerTwo = userByRole(users, "customer2@example.com");
-        User ownerOne = userByRole(users, "owner1@example.com");
-        User ownerTwo = userByRole(users, "owner2@example.com");
+        User customerOne = userByRole(users, "ahmed.hassan@gmail.com");
+        User customerTwo = userByRole(users, "sara.ali@gmail.com");
+        User ownerOne = userByRole(users, "mahmoud.abdallah@gmail.com");
+        User ownerTwo = userByRole(users, "hisham.ibrahim@yahoo.com");
 
         Property duplex = property(properties, "Modern Duplex in New Damietta");
         Property seaView = property(properties, "Sea View Apartment - Ras El Bar");
@@ -714,16 +796,20 @@ public class DataSeeder implements CommandLineRunner {
 
         OffsetDateTime now = OffsetDateTime.now();
         List<Appointment> result = new ArrayList<>();
+        // NOTE: each appointment's owner must match the property's actual owner.
+        // seed() only inserts missing UUIDs (it never updates existing rows), so
+        // re-seeding an OLD database will keep stale owner assignments - recreate
+        // the database (or delete these rows) when the seed data changes.
         seed(result, appointmentRepository, "a9000000-0000-0000-0000-000000000001",
-                () -> appointment(duplex, customerOne, ownerOne,
+                () -> appointment(duplex, customerOne, ownerTwo,
                         now.plusDays(2).withHour(11).withMinute(0), AppointmentStatus.ACCEPTED,
                         "Interested in visiting this weekend"));
         seed(result, appointmentRepository, "a9000000-0000-0000-0000-000000000002",
-                () -> appointment(seaView, customerTwo, ownerTwo,
-                        now.plusDays(3).withHour(16).withMinute(30), AppointmentStatus.PENDING,
+                () -> appointment(seaView, customerTwo, ownerOne,
+                        now.plusDays(3).withHour(16).withMinute(30), AppointmentStatus.ACCEPTED,
                         "Please show the sea view rooms"));
         seed(result, appointmentRepository, "a9000000-0000-0000-0000-000000000003",
-                () -> appointment(studio, customerOne, ownerOne,
+                () -> appointment(studio, customerOne, ownerTwo,
                         now.minusDays(5).withHour(12).withMinute(0), AppointmentStatus.COMPLETED,
                         "Short visit to check finishing"));
         seed(result, appointmentRepository, "a9000000-0000-0000-0000-000000000004",
@@ -734,19 +820,29 @@ public class DataSeeder implements CommandLineRunner {
                 () -> appointment(niceApartment, customerTwo, admin(users),
                         now.plusDays(1).withHour(14).withMinute(0), AppointmentStatus.PENDING,
                         "Would like a quick viewing"));
+        seed(result, appointmentRepository, "a9000000-0000-0000-0000-000000000006",
+                () -> appointment(seaView, customerOne, ownerOne,
+                        now.minusDays(2).withHour(15).withMinute(0), AppointmentStatus.COMPLETED,
+                        "Final walkthrough before signing"));
+        seed(result, appointmentRepository, "a9000000-0000-0000-0000-000000000007",
+                () -> appointment(duplex, customerTwo, ownerTwo,
+                        now.plusDays(4).withHour(13).withMinute(30), AppointmentStatus.ACCEPTED,
+                        "Second viewing with my family"));
         return result;
     }
 
     private void seedReviews(List<User> users, List<Appointment> appointments) {
-        User customerOne = userByRole(users, "customer1@example.com");
-        User customerTwo = userByRole(users, "customer2@example.com");
-        User techOne = userByRole(users, "technician1@example.com");
+        User customerOne = userByRole(users, "ahmed.hassan@gmail.com");
+        User customerTwo = userByRole(users, "sara.ali@gmail.com");
+        User techOne = userByRole(users, "amr.said@yahoo.com");
+        User ownerOne = userByRole(users, "mahmoud.abdallah@gmail.com");
 
         List<Review> rows = new ArrayList<>();
         seed(rows, reviewRepository, "a4000000-0000-0000-0000-000000000001",
                 () -> review(customerOne, EntityType.COMPANY, "33333333-3333-3333-3333-333333333333",
                         (byte) 5, "Excellent finishing work, very professional team.", true,
-                        appointments.get(2).getId()));
+                        appointment(appointments, "Studio in Toriel - Mansoura", customerOne,
+                                AppointmentStatus.COMPLETED).getId()));
         seed(rows, reviewRepository, "a4000000-0000-0000-0000-000000000002",
                 () -> review(customerOne, EntityType.PROPERTY, "90000000-0000-0000-0000-000000000002",
                         (byte) 4, "Great duplex, sea view is amazing.", false, null));
@@ -756,10 +852,28 @@ public class DataSeeder implements CommandLineRunner {
         seed(rows, reviewRepository, "a4000000-0000-0000-0000-000000000004",
                 () -> review(customerTwo, EntityType.PROPERTY, "90000000-0000-0000-0000-000000000001",
                         (byte) 5, "Perfect location right on the beach.", true,
-                        appointments.get(1).getId()));
+                        appointment(appointments, "Sea View Apartment - Ras El Bar", customerTwo,
+                                AppointmentStatus.ACCEPTED).getId()));
         seed(rows, reviewRepository, "a4000000-0000-0000-0000-000000000005",
                 () -> review(techOne, EntityType.PROPERTY, "90000000-0000-0000-0000-000000000004",
                         (byte) 3, "Fair price for a studio, needs finishing.", false, null));
+        seed(rows, reviewRepository, "a4000000-0000-0000-0000-000000000006",
+                () -> review(customerTwo, EntityType.COMPANY, "80000000-0000-0000-0000-000000000004",
+                        (byte) 5, "Very professional office, everything went smoothly.", false, null));
+        seed(rows, reviewRepository, "a4000000-0000-0000-0000-000000000007",
+                () -> review(customerOne, EntityType.COMPANY, "80000000-0000-0000-0000-000000000003",
+                        (byte) 4, "Quick response and fair prices for the maintenance work.", false, null));
+        seed(rows, reviewRepository, "a4000000-0000-0000-0000-000000000008",
+                () -> review(customerTwo, EntityType.PROPERTY, "90000000-0000-0000-0000-000000000002",
+                        (byte) 4, "Spacious duplex with a nice layout.", false, null));
+        seed(rows, reviewRepository, "a4000000-0000-0000-0000-000000000009",
+                () -> review(customerOne, EntityType.PROPERTY, "90000000-0000-0000-0000-000000000001",
+                        (byte) 4, "Lovely sea view and a quiet building.", true,
+                        appointment(appointments, "Sea View Apartment - Ras El Bar", customerOne,
+                                AppointmentStatus.COMPLETED).getId()));
+        seed(rows, reviewRepository, "a4000000-0000-0000-0000-000000000010",
+                () -> review(ownerOne, EntityType.COMPANY, "33333333-3333-3333-3333-333333333333",
+                        (byte) 5, "They finished our facade beautifully and on time.", false, null));
     }
 
     // ------------------------------------------------------------------
@@ -797,9 +911,9 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private void seedBroadcastDeliveries(List<Broadcast> broadcasts, List<User> users) {
-        User customerOne = userByRole(users, "customer1@example.com");
-        User customerTwo = userByRole(users, "customer2@example.com");
-        User ownerOne = userByRole(users, "owner1@example.com");
+        User customerOne = userByRole(users, "ahmed.hassan@gmail.com");
+        User customerTwo = userByRole(users, "sara.ali@gmail.com");
+        User ownerOne = userByRole(users, "mahmoud.abdallah@gmail.com");
 
         List<BroadcastDelivery> rows = new ArrayList<>();
         OffsetDateTime now = OffsetDateTime.now();
@@ -816,9 +930,9 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private void seedFollowerPreferences(List<User> users, List<Company> companies) {
-        User customerOne = userByRole(users, "customer1@example.com");
-        User customerTwo = userByRole(users, "customer2@example.com");
-        User ownerOne = userByRole(users, "owner1@example.com");
+        User customerOne = userByRole(users, "ahmed.hassan@gmail.com");
+        User customerTwo = userByRole(users, "sara.ali@gmail.com");
+        User ownerOne = userByRole(users, "mahmoud.abdallah@gmail.com");
         Company deltaFinishing = company(companies, "Delta Finishing Co.");
         Company elDelta = company(companies, "El-Delta Finishing Group");
         Company nile = company(companies, "Nile Maintenance & Services");
@@ -837,9 +951,9 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private void seedFollowers(List<User> users, List<Company> companies) {
-        User customerOne = userByRole(users, "customer1@example.com");
-        User customerTwo = userByRole(users, "customer2@example.com");
-        User ownerOne = userByRole(users, "owner1@example.com");
+        User customerOne = userByRole(users, "ahmed.hassan@gmail.com");
+        User customerTwo = userByRole(users, "sara.ali@gmail.com");
+        User ownerOne = userByRole(users, "mahmoud.abdallah@gmail.com");
         Company deltaFinishing = company(companies, "Delta Finishing Co.");
         Company elDelta = company(companies, "El-Delta Finishing Group");
         Company nile = company(companies, "Nile Maintenance & Services");
@@ -855,6 +969,10 @@ public class DataSeeder implements CommandLineRunner {
                 () -> follower(customerTwo, nile));
         seed(rows, followerRepository, "a5000000-0000-0000-0000-000000000005",
                 () -> follower(ownerOne, elDelta));
+        seed(rows, followerRepository, "a5000000-0000-0000-0000-000000000006",
+                () -> follower(customerTwo, elDelta));
+        seed(rows, followerRepository, "a5000000-0000-0000-0000-000000000007",
+                () -> follower(customerOne, nile));
     }
 
     private List<Subscription> seedSubscriptions(List<Company> companies, List<SubscriptionPlan> plans,
@@ -863,7 +981,7 @@ public class DataSeeder implements CommandLineRunner {
         Company elDelta = company(companies, "El-Delta Finishing Group");
         Company star = company(companies, "Damietta Star Finishing");
         Company nile = company(companies, "Nile Maintenance & Services");
-        User ownerOne = userByRole(users, "owner1@example.com");
+        User ownerOne = userByRole(users, "mahmoud.abdallah@gmail.com");
 
         SubscriptionPlan gold = plan(plans, "Gold");
         SubscriptionPlan platinum = plan(plans, "Platinum");
@@ -924,8 +1042,9 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private void seedSavedItems(List<User> users, List<Property> properties, List<Company> companies) {
-        User customerOne = userByRole(users, "customer1@example.com");
-        User customerTwo = userByRole(users, "customer2@example.com");
+        User customerOne = userByRole(users, "ahmed.hassan@gmail.com");
+        User customerTwo = userByRole(users, "sara.ali@gmail.com");
+        User ownerOne = userByRole(users, "mahmoud.abdallah@gmail.com");
         Company deltaFinishing = company(companies, "Delta Finishing Co.");
 
         List<SavedItem> rows = new ArrayList<>();
@@ -939,6 +1058,16 @@ public class DataSeeder implements CommandLineRunner {
                 () -> savedItem(customerTwo, EntityType.COMPANY, "80000000-0000-0000-0000-000000000001"));
         seed(rows, savedItemRepository, "a3000000-0000-0000-0000-000000000005",
                 () -> savedItem(customerOne, EntityType.PROPERTY, "90000000-0000-0000-0000-000000000005"));
+        seed(rows, savedItemRepository, "a3000000-0000-0000-0000-000000000006",
+                () -> savedItem(customerTwo, EntityType.PROPERTY, "90000000-0000-0000-0000-000000000004"));
+        seed(rows, savedItemRepository, "a3000000-0000-0000-0000-000000000007",
+                () -> savedItem(customerOne, EntityType.COMPANY, "80000000-0000-0000-0000-000000000004"));
+        seed(rows, savedItemRepository, "a3000000-0000-0000-0000-000000000008",
+                () -> savedItem(ownerOne, EntityType.COMPANY, "80000000-0000-0000-0000-000000000003"));
+        seed(rows, savedItemRepository, "a3000000-0000-0000-0000-000000000009",
+                () -> savedItem(ownerOne, EntityType.COMPANY, "80000000-0000-0000-0000-000000000004"));
+        seed(rows, savedItemRepository, "a3000000-0000-0000-0000-000000000010",
+                () -> savedItem(customerTwo, EntityType.PROPERTY, "90000000-0000-0000-0000-000000000006"));
     }
 
     // ------------------------------------------------------------------
@@ -946,9 +1075,9 @@ public class DataSeeder implements CommandLineRunner {
     // ------------------------------------------------------------------
 
     private void seedReports(List<User> users) {
-        User customerOne = userByRole(users, "customer1@example.com");
-        User customerTwo = userByRole(users, "customer2@example.com");
-        User ownerOne = userByRole(users, "owner1@example.com");
+        User customerOne = userByRole(users, "ahmed.hassan@gmail.com");
+        User customerTwo = userByRole(users, "sara.ali@gmail.com");
+        User ownerOne = userByRole(users, "mahmoud.abdallah@gmail.com");
         User admin = admin(users);
 
         List<Report> rows = new ArrayList<>();
@@ -1080,10 +1209,12 @@ public class DataSeeder implements CommandLineRunner {
         return service;
     }
 
-    private static SubscriptionPlan plan(String name, SubscriptionTier tier, String price,
+    private static SubscriptionPlan plan(String name, String nameAr, SubscriptionTier tier, String price,
                                          int listingQuota, int broadcastQuota) {
         SubscriptionPlan plan = new SubscriptionPlan();
         plan.setName(name);
+        plan.setNameAr(nameAr);
+        plan.setNameEn(name);
         plan.setTier(tier);
         plan.setPrice(new BigDecimal(price));
         plan.setListingQuota(listingQuota);
@@ -1436,6 +1567,22 @@ public class DataSeeder implements CommandLineRunner {
 
     private static Property property(List<Property> properties, String title) {
         return properties.stream().filter(p -> p.getTitle().equals(title)).findFirst().orElseThrow();
+    }
+
+    private static Conversation conversation(List<Conversation> conversations, User userOne, User userTwo) {
+        return conversations.stream()
+                .filter(c -> c.getUserOne().getId().equals(userOne.getId())
+                        && c.getUserTwo().getId().equals(userTwo.getId()))
+                .findFirst().orElseThrow();
+    }
+
+    private static Appointment appointment(List<Appointment> appointments, String title, User customer,
+                                           AppointmentStatus status) {
+        return appointments.stream()
+                .filter(a -> a.getProperty().getTitle().equals(title)
+                        && a.getCustomer().getId().equals(customer.getId())
+                        && a.getStatus() == status)
+                .findFirst().orElseThrow();
     }
 
     private static User userByRole(List<User> users, String email) {
