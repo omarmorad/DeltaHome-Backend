@@ -4,6 +4,7 @@ import com.deltahomes.backend.dto.summary.ConversationSummary;
 import com.deltahomes.backend.entity.communication.Conversation;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -18,17 +19,12 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
     List<Conversation> findByUserOneIdOrUserTwoIdOrderByUpdatedAtDesc(UUID userOneId, UUID userTwoId);
     Optional<Conversation> findByUserOneIdAndUserTwoId(UUID userOneId, UUID userTwoId);
 
-    @Query(value = """
-            SELECT c.id, c.last_message_preview AS lastMessagePreview, c.updated_at AS updatedAt,
-                   u.id AS otherUserId, u.name AS otherUserName
-            FROM conversations c
-            JOIN users u ON u.id = CASE WHEN c.user_one_id = CAST(:userId AS uuid) THEN c.user_two_id ELSE c.user_one_id END
-            WHERE c.user_one_id = CAST(:userId AS uuid) OR c.user_two_id = CAST(:userId AS uuid)
-            """,
-            countQuery = """
-            SELECT count(*) FROM conversations c
-            WHERE c.user_one_id = CAST(:userId AS uuid) OR c.user_two_id = CAST(:userId AS uuid)
-            """,
-            nativeQuery = true)
-    Page<ConversationSummary> searchIndex(@Param("userId") UUID userId, Pageable pageable);
+    /**
+     * Index query with eager fetching of userOne and userTwo relationships.
+     * Uses JPQL with @EntityGraph to avoid LazyInitializationException.
+     */
+    @EntityGraph(attributePaths = {"userOne", "userTwo"})
+    @Query("SELECT c FROM Conversation c " +
+           "WHERE c.userOne.id = :userId OR c.userTwo.id = :userId")
+    Page<Conversation> searchIndex(@Param("userId") UUID userId, Pageable pageable);
 }

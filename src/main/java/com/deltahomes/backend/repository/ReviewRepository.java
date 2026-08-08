@@ -5,6 +5,7 @@ import com.deltahomes.backend.entity.Review;
 import com.deltahomes.backend.entity.enums.EntityType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -17,29 +18,32 @@ import java.util.UUID;
 public interface ReviewRepository extends JpaRepository<Review, UUID> {
     List<Review> findByEntityTypeAndEntityId(EntityType entityType, UUID entityId);
     boolean existsByReviewerIdAndSourceAppointmentId(UUID reviewerId, UUID sourceAppointmentId);
+    boolean existsByReviewerIdAndEntityTypeAndEntityId(UUID reviewerId, EntityType entityType, UUID entityId);
 
-    @Query(value = """
-            SELECT r.id, r.entity_type AS entityType, r.entity_id AS entityId, r.rating, r.comment,
-                   r.interaction_verified AS interactionVerified, r.created_at AS createdAt,
-                   u.name AS reviewerName
-            FROM reviews r
-            JOIN users u ON u.id = r.reviewer_id
-            WHERE (CAST(:entityType AS text) IS NULL OR r.entity_type = CAST(:entityType AS text))
-              AND (CAST(:entityId AS uuid) IS NULL OR r.entity_id = CAST(:entityId AS uuid))
-              AND (CAST(:minRating AS smallint) IS NULL OR r.rating >= CAST(:minRating AS smallint))
-              AND (CAST(:q AS text) = '' OR websearch_to_tsquery('simple', :q) @@ r.search_vector)
-            """,
-            countQuery = """
-            SELECT count(*) FROM reviews r
-            WHERE (CAST(:entityType AS text) IS NULL OR r.entity_type = CAST(:entityType AS text))
-              AND (CAST(:entityId AS uuid) IS NULL OR r.entity_id = CAST(:entityId AS uuid))
-              AND (CAST(:minRating AS smallint) IS NULL OR r.rating >= CAST(:minRating AS smallint))
-              AND (CAST(:q AS text) = '' OR websearch_to_tsquery('simple', :q) @@ r.search_vector)
-            """,
-            nativeQuery = true)
-    Page<ReviewSummary> searchIndex(@Param("q") String q,
-                                    @Param("entityType") String entityType,
-                                    @Param("entityId") UUID entityId,
-                                    @Param("minRating") Integer minRating,
-                                    Pageable pageable);
+    long countByEntityTypeAndEntityId(EntityType entityType, UUID entityId);
+
+    @Query("SELECT COALESCE(AVG(r.rating), 0) FROM Review r " +
+            "WHERE r.entityType = :entityType AND r.entityId = :entityId")
+    Double averageRating(@Param("entityType") EntityType entityType, @Param("entityId") UUID entityId);
+
+    @Query("SELECT r.rating, COUNT(r) FROM Review r " +
+            "WHERE r.entityType = :entityType AND r.entityId = :entityId GROUP BY r.rating")
+    List<Object[]> ratingDistribution(@Param("entityType") EntityType entityType,
+                                      @Param("entityId") UUID entityId);
+
+    /**
+     * Index query with eager fetching of reviewer relationship.
+     * Uses JPQL with @EntityGraph to avoid LazyInitializationException.
+     */
+    @EntityGraph(attributePaths = {"reviewer"})
+    @Query("SELECT r FROM Review r " +
+           "WHERE (:entityType IS NULL OR r.entityType = :entityType) " +
+           "AND (:entityId IS NULL OR r.entityId = :entityId) " +
+           "AND (:minRating IS NULL OR r.rating >= :minRating) " +
+           "AND (:q = '' OR LOWER(r.comment) LIKE LOWER(CONCAT('%', :q, '%')))")
+    Page<Review> searchIndex(@Param("q") String q,
+                             @Param("entityType") EntityType entityType,
+                             @Param("entityId") UUID entityId,
+                             @Param("minRating") Integer minRating,
+                             Pageable pageable);
 }

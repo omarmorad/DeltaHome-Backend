@@ -4,6 +4,7 @@ import com.deltahomes.backend.dto.summary.MessageSummary;
 import com.deltahomes.backend.entity.communication.Message;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -16,21 +17,15 @@ import java.util.UUID;
 public interface MessageRepository extends JpaRepository<Message, UUID> {
     List<Message> findByConversationIdOrderByCreatedAtAsc(UUID conversationId);
 
-    @Query(value = """
-            SELECT m.id, m.type, m.text_body AS textBody, m.media_url AS mediaUrl, m.payload,
-                   s.name AS senderName, m.created_at AS createdAt
-            FROM messages m
-            JOIN users s ON s.id = m.sender_id
-            WHERE m.conversation_id = CAST(:conversationId AS uuid)
-              AND (CAST(:q AS text) = '' OR websearch_to_tsquery('simple', :q) @@ m.search_vector)
-            """,
-            countQuery = """
-            SELECT count(*) FROM messages m
-            WHERE m.conversation_id = CAST(:conversationId AS uuid)
-              AND (CAST(:q AS text) = '' OR websearch_to_tsquery('simple', :q) @@ m.search_vector)
-            """,
-            nativeQuery = true)
-    Page<MessageSummary> searchIndex(@Param("conversationId") UUID conversationId,
-                                     @Param("q") String q,
-                                     Pageable pageable);
+    /**
+     * Index query with eager fetching of sender relationship.
+     * Uses JPQL with @EntityGraph to avoid LazyInitializationException.
+     */
+    @EntityGraph(attributePaths = {"sender"})
+    @Query("SELECT m FROM Message m " +
+           "WHERE m.conversation.id = :conversationId " +
+           "AND (:q = '' OR LOWER(m.textBody) LIKE LOWER(CONCAT('%', :q, '%')))")
+    Page<Message> searchIndex(@Param("conversationId") UUID conversationId,
+                              @Param("q") String q,
+                              Pageable pageable);
 }
