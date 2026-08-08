@@ -1,6 +1,6 @@
 package com.deltahomes.backend.dto.summary;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public interface AppointmentSummary {
@@ -9,11 +9,11 @@ public interface AppointmentSummary {
 
     String getStatus();
 
-    LocalDateTime getRequestedSlot();
+    OffsetDateTime getRequestedSlot();
 
     String getNote();
 
-    LocalDateTime getCreatedAt();
+    OffsetDateTime getCreatedAt();
 
     UUID getPropertyId();
 

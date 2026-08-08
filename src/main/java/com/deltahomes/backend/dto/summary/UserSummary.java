@@ -1,6 +1,6 @@
 package com.deltahomes.backend.dto.summary;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public interface UserSummary {
@@ -19,7 +19,7 @@ public interface UserSummary {
 
     Byte getVerificationLevel();
 
-    LocalDateTime getCreatedAt();
+    OffsetDateTime getCreatedAt();
 
-    LocalDateTime getLastLoginAt();
+    OffsetDateTime getLastLoginAt();
 }

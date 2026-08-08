@@ -1,6 +1,6 @@
 package com.deltahomes.backend.dto.summary;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public interface BroadcastSummary {
@@ -13,7 +13,7 @@ public interface BroadcastSummary {
 
     String getType();
 
-    LocalDateTime getCreatedAt();
+    OffsetDateTime getCreatedAt();
 
     UUID getCompanyId();
 

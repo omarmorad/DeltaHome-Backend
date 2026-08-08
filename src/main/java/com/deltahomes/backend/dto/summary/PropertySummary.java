@@ -1,7 +1,7 @@
 package com.deltahomes.backend.dto.summary;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 /**
@@ -38,5 +38,5 @@ public interface PropertySummary {
 
     String getFeatures();
 
-    LocalDateTime getCreatedAt();
+    OffsetDateTime getCreatedAt();
 }

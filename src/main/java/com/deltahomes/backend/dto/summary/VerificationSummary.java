@@ -1,6 +1,6 @@
 package com.deltahomes.backend.dto.summary;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public interface VerificationSummary {
@@ -15,9 +15,9 @@ public interface VerificationSummary {
 
     String getRejectionReason();
 
-    LocalDateTime getReviewedAt();
+    OffsetDateTime getReviewedAt();
 
-    LocalDateTime getCreatedAt();
+    OffsetDateTime getCreatedAt();
 
     String getUserName();
 

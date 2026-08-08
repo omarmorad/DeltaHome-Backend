@@ -1,6 +1,6 @@
 package com.deltahomes.backend.dto.summary;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public interface ReviewSummary {
@@ -19,5 +19,5 @@ public interface ReviewSummary {
 
     String getReviewerName();
 
-    LocalDateTime getCreatedAt();
+    OffsetDateTime getCreatedAt();
 }

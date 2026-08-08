@@ -1,6 +1,6 @@
 package com.deltahomes.backend.dto.summary;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public interface MessageSummary {
@@ -17,5 +17,5 @@ public interface MessageSummary {
 
     String getSenderName();
 
-    LocalDateTime getCreatedAt();
+    OffsetDateTime getCreatedAt();
 }

@@ -1,6 +1,6 @@
 package com.deltahomes.backend.dto.summary;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public interface AuditLogSummary {
@@ -19,5 +19,5 @@ public interface AuditLogSummary {
 
     String getAdminName();
 
-    LocalDateTime getCreatedAt();
+    OffsetDateTime getCreatedAt();
 }

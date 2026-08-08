@@ -1,6 +1,6 @@
 package com.deltahomes.backend.dto.summary;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public interface ConversationSummary {
@@ -9,7 +9,7 @@ public interface ConversationSummary {
 
     String getLastMessagePreview();
 
-    LocalDateTime getUpdatedAt();
+    OffsetDateTime getUpdatedAt();
 
     UUID getOtherUserId();
 
