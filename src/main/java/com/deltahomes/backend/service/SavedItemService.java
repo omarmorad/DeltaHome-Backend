@@ -6,6 +6,7 @@ import com.deltahomes.backend.entity.SavedItem;
 import com.deltahomes.backend.entity.enums.EntityType;
 import com.deltahomes.backend.entity.user.User;
 import com.deltahomes.backend.exception.BusinessException;
+import com.deltahomes.backend.exception.ResourceNotFoundException;
 import com.deltahomes.backend.repository.CompanyRepository;
 import com.deltahomes.backend.repository.PropertyRepository;
 import com.deltahomes.backend.repository.SavedItemRepository;
@@ -47,6 +48,16 @@ public class SavedItemService {
     @Transactional
     public void unsave(User user, EntityType entityType, UUID entityId) {
         savedItemRepository.deleteByUserIdAndEntityTypeAndEntityId(user.getId(), entityType, entityId);
+    }
+
+    @Transactional
+    public void deleteById(User user, UUID savedItemId) {
+        SavedItem item = savedItemRepository.findById(savedItemId)
+                .orElseThrow(() -> new ResourceNotFoundException("SavedItem", savedItemId));
+        if (!item.getUser().getId().equals(user.getId())) {
+            throw new BusinessException("You can only remove your own saved items");
+        }
+        savedItemRepository.delete(item);
     }
 
     @Transactional(readOnly = true)
