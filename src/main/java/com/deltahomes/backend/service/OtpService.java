@@ -14,7 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.HexFormat;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -118,7 +118,7 @@ public class OtpService {
     // ---------- Shared logic ----------
 
     private OtpCode issueOtp(String phone, String email, OtpPurpose purpose, Consumer<String> sender) {
-        LocalDateTime now = LocalDateTime.now();
+        OffsetDateTime now = OffsetDateTime.now();
         String recipient = phone != null ? phone : email;
 
         long sentInWindow = phone != null
@@ -164,7 +164,7 @@ public class OtpService {
                 : otpCodeRepository.findFirstByEmailAndPurposeOrderByCreatedAtDesc(email, purpose);
         OtpCode otp = found.orElseThrow(() -> new BusinessException("No active OTP code found. Request a new one."));
 
-        if (otp.getExpiresAt().isBefore(LocalDateTime.now())) {
+        if (otp.getExpiresAt().isBefore(OffsetDateTime.now())) {
             otpCodeRepository.delete(otp);
             throw new BusinessException("OTP code has expired. Request a new one.");
         }

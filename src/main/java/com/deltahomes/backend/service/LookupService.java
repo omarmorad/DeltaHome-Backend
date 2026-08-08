@@ -39,35 +39,30 @@ public class LookupService {
         this.subscriptionPlanRepository = subscriptionPlanRepository;
     }
 
-    public PaginatedResponse<City> indexCities(String q, Pageable pageable) {
-        Page<City> page = cityRepository.searchIndex(q == null ? "" : q.trim(), PageUtils.normalizeSort(pageable));
-        return PaginatedResponse.from(page);
+    public Page<City> indexCities(String q, Pageable pageable) {
+        return cityRepository.searchIndex(q == null ? "" : q.trim(), PageUtils.normalizeSort(pageable));
     }
 
-    public PaginatedResponse<District> indexDistricts(String q, UUID cityId, Pageable pageable) {
-        Page<District> page = districtRepository.searchIndex(
+    public Page<District> indexDistricts(String q, UUID cityId, Pageable pageable) {
+        return districtRepository.searchIndex(
                 q == null ? "" : q.trim(), cityId, PageUtils.normalizeSort(pageable));
-        return PaginatedResponse.from(page);
     }
 
-    public PaginatedResponse<Service> indexServices(String q, String category, Pageable pageable) {
-        Page<Service> page = serviceRepository.searchIndex(
+    public Page<Service> indexServices(String q, String category, Pageable pageable) {
+        return serviceRepository.searchIndex(
                 q == null ? "" : q.trim(), category, PageUtils.normalizeSort(pageable));
-        return PaginatedResponse.from(page);
     }
 
-    public PaginatedResponse<Feature> indexFeatures(String q, Pageable pageable) {
-        Page<Feature> page = featureRepository.searchIndex(q == null ? "" : q.trim(), PageUtils.normalizeSort(pageable));
-        return PaginatedResponse.from(page);
+    public Page<Feature> indexFeatures(String q, Pageable pageable) {
+        return featureRepository.searchIndex(q == null ? "" : q.trim(), PageUtils.normalizeSort(pageable));
     }
 
-    public PaginatedResponse<SubscriptionPlan> indexPlans(String q, SubscriptionTier tier,
-                                                          Boolean isActive, Pageable pageable) {
-        Page<SubscriptionPlan> page = subscriptionPlanRepository.searchIndex(
+    public Page<SubscriptionPlan> indexPlans(String q, SubscriptionTier tier,
+                                             Boolean isActive, Pageable pageable) {
+        return subscriptionPlanRepository.searchIndex(
                 q == null ? "" : q.trim(),
                 tier == null ? null : tier.name(),
                 isActive,
                 PageUtils.normalizeSort(pageable));
-        return PaginatedResponse.from(page);
     }
 }

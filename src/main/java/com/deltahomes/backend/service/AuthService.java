@@ -15,7 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.Optional;
 
 @Service
@@ -90,7 +90,7 @@ public class AuthService {
         user.setRole(request.role());
         user.setStatus(UserStatus.ACTIVE);
         user.setVerificationLevel((byte) 1);
-        user.setLastLoginAt(LocalDateTime.now());
+        user.setLastLoginAt(OffsetDateTime.now());
 
         User saved = userRepository.save(user);
         otpService.consumeEmail(email, OtpPurpose.REGISTRATION);
@@ -163,7 +163,7 @@ public class AuthService {
         user.setRole(request.role());
         user.setStatus(UserStatus.ACTIVE);
         user.setVerificationLevel((byte) 0);
-        user.setLastLoginAt(LocalDateTime.now());
+        user.setLastLoginAt(OffsetDateTime.now());
 
         User saved = userRepository.save(user);
         otpService.consume(request.phone(), OtpPurpose.REGISTRATION);
@@ -253,7 +253,7 @@ public class AuthService {
     }
 
     private void touchLastLogin(User user) {
-        user.setLastLoginAt(LocalDateTime.now());
+        user.setLastLoginAt(OffsetDateTime.now());
         userRepository.save(user);
     }
 
