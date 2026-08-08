@@ -17,6 +17,9 @@ public class Feature extends BaseEntity {
     @Column(name = "name_ar", length = 100, nullable = false)
     private String nameAr;
 
-    @Column(name = "data_type", length = 50)
-    private String dataType;
+    @Column(name = "name_en", length = 100)
+    private String nameEn;
+
+    @Column(name = "icon", length = 50)
+    private String icon;
 }

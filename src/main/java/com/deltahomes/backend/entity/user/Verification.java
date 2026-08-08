@@ -7,7 +7,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @Getter
 @Setter
@@ -38,5 +38,5 @@ public class Verification extends BaseEntity {
     private User reviewedBy;
 
     @Column(name = "reviewed_at")
-    private LocalDateTime reviewedAt;
+    private OffsetDateTime reviewedAt;
 }

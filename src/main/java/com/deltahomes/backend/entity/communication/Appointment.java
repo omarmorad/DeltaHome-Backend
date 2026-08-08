@@ -8,7 +8,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @Getter
 @Setter
@@ -29,7 +29,7 @@ public class Appointment extends BaseEntity {
     private User owner;
 
     @Column(name = "requested_slot", nullable = false)
-    private LocalDateTime requestedSlot;
+    private OffsetDateTime requestedSlot;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 20, nullable = false)

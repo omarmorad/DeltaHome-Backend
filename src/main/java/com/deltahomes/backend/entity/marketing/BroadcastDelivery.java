@@ -6,7 +6,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @Getter
 @Setter
@@ -29,5 +29,5 @@ public class BroadcastDelivery extends BaseEntity {
     private Boolean clicked = false;
 
     @Column(name = "opened_at")
-    private LocalDateTime openedAt;
+    private OffsetDateTime openedAt;
 }

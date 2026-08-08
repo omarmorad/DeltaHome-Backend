@@ -17,18 +17,24 @@ public class SubscriptionPlan extends BaseEntity {
     @Column(name = "name", length = 100, nullable = false)
     private String name;
 
+    @Column(name = "name_ar", length = 100, nullable = false)
+    private String nameAr;
+
+    @Column(name = "name_en", length = 100)
+    private String nameEn;
+
     @Enumerated(EnumType.STRING)
-    @Column(name = "tier", length = 20, nullable = false)
+    @Column(name = "tier", length = 50, nullable = false)
     private SubscriptionTier tier;
 
-    @Column(name = "price", precision = 12, scale = 2, nullable = false)
+    @Column(name = "price", precision = 10, scale = 2, nullable = false)
     private BigDecimal price;
 
-    @Column(name = "listing_cap")
-    private Integer listingCap;
+    @Column(name = "listing_quota", nullable = false)
+    private Integer listingQuota;
 
-    @Column(name = "broadcast_cap")
-    private Integer broadcastCap;
+    @Column(name = "broadcast_quota", nullable = false)
+    private Integer broadcastQuota;
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
