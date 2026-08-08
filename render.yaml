@@ -1,0 +1,80 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# Deploys the DeltaHome Spring Boot backend from the Dockerfile in this repo.
+#
+# The app reads all configuration from environment variables (see
+# src/main/resources/application.yml). Values marked `sync: false` must be
+# filled in once via the Render dashboard after the blueprint is created.
+
+databases:
+  - name: delta-homes-db
+    databaseName: deltahomes
+    plan: free
+    postgresMajorVersion: "16"
+
+services:
+  - type: web
+    name: delta-home-backend
+    runtime: docker
+    plan: free
+    autoDeploy: true
+    # A public, unauthenticated endpoint. Fails (500) if the database is down,
+    # which correctly reports an unhealthy instance.
+    healthCheckPath: /api/v1/cities
+    envVars:
+      # Render injects PORT automatically; the app falls back to 8080.
+
+      # --- Database (Postgres) ---
+      # The JDBC driver needs a `jdbc:` URL. Render's connectionString uses the
+      # postgres:// scheme, so build the URL manually from the dashboard's
+      # "Internal Database URL": jdbc:postgresql://<host>:5432/deltahomes
+      - key: DB_URL
+        sync: false
+      - key: DB_USERNAME
+        fromDatabase:
+          name: delta-homes-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: delta-homes-db
+          property: password
+
+      # --- Security (REQUIRED: the app ships insecure dev defaults) ---
+      - key: JWT_SECRET
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false # e.g. https://app.deltahomes.com
+      - key: APP_BASE_URL
+        sync: false # e.g. https://delta-home-backend.onrender.com
+
+      # --- Bootstrap admin (REQUIRED: change from the dev defaults) ---
+      - key: ADMIN_PHONE
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_NAME
+        sync: false
+      - key: ADMIN_PERMANENT_OTP
+        sync: false
+
+      # --- Demo seed data (idempotent; fills lookup tables) ---
+      - key: SEED_ENABLED
+        value: "true"
+
+      # --- Optional integrations (set only if you use them) ---
+      # - key: REDIS_HOST          # or Redis/Render Key Value connectionString
+      # - key: REDIS_PORT
+      # - key: MAIL_HOST
+      # - key: MAIL_PORT
+      # - key: MAIL_USERNAME
+      # - key: MAIL_PASSWORD
+      # - key: MAIL_FROM
+      # - key: TWILIO_ACCOUNT_SID
+      # - key: TWILIO_AUTH_TOKEN
+      # - key: TWILIO_PHONE_NUMBER
+      # - key: MEILISEARCH_HOST
+      # - key: MEILISEARCH_API_KEY
+      # - key: STORAGE_ENDPOINT
+      # - key: STORAGE_ACCESS_KEY
+      # - key: STORAGE_SECRET_KEY
+      # - key: STORAGE_BUCKET
+      # - key: STORAGE_REGION

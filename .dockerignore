@@ -1,0 +1,38 @@
+# Build output
+target/
+build/
+out/
+bin/
+
+# Version control
+.git/
+.github/
+
+# IDE / editor
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Unnecessary local files / docs
+docs/
+postman/
+*.md
+
+# Local config / secrets
+*.local
+*.env
+.env
+firebase-service-account.json
