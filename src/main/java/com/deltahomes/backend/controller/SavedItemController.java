@@ -48,6 +48,13 @@ public class SavedItemController {
         return ResponseEntity.noContent().build();
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteSaved(@AuthenticationPrincipal UserDetails principal,
+                                            @PathVariable UUID id) {
+        savedItemService.deleteById(currentUser(principal), id);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping
     public ResponseEntity<PaginatedResponse<SocialDtos.SavedItemResponse>> listSaved(
             @AuthenticationPrincipal UserDetails principal,
