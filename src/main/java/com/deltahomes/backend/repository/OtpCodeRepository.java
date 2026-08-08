@@ -5,7 +5,7 @@ import com.deltahomes.backend.entity.enums.OtpPurpose;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.Optional;
 
 import java.util.UUID;
@@ -17,11 +17,11 @@ public interface OtpCodeRepository extends JpaRepository<OtpCode, UUID> {
 
     void deleteByPhoneAndPurpose(String phone, OtpPurpose purpose);
 
-    long countByPhoneAndPurposeAndCreatedAtAfter(String phone, OtpPurpose purpose, LocalDateTime after);
+    long countByPhoneAndPurposeAndCreatedAtAfter(String phone, OtpPurpose purpose, OffsetDateTime after);
 
     Optional<OtpCode> findFirstByEmailAndPurposeOrderByCreatedAtDesc(String email, OtpPurpose purpose);
 
     void deleteByEmailAndPurpose(String email, OtpPurpose purpose);
 
-    long countByEmailAndPurposeAndCreatedAtAfter(String email, OtpPurpose purpose, LocalDateTime after);
+    long countByEmailAndPurposeAndCreatedAtAfter(String email, OtpPurpose purpose, OffsetDateTime after);
 }
