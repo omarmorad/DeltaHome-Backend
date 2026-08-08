@@ -4,6 +4,8 @@ import com.deltahomes.backend.entity.auth.OtpCode;
 import com.deltahomes.backend.entity.enums.OtpPurpose;
 import com.deltahomes.backend.exception.BusinessException;
 import com.deltahomes.backend.repository.OtpCodeRepository;
+import com.deltahomes.backend.repository.UserRepository;
+import com.deltahomes.backend.entity.user.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,6 +23,9 @@ import java.util.function.Consumer;
 
 /**
  * Generates, sends, verifies and consumes SMS/email OTP codes.
+ * <p>
+ * Delivery preference: SMTP (email) OTP is the primary channel for new users;
+ * SMS OTP is used for phones that already belong to a registered user.
  * <p>
  * Security measures:
  * <ul>
@@ -41,6 +46,7 @@ public class OtpService {
     private final OtpCodeRepository otpCodeRepository;
     private final SmsService smsService;
     private final EmailService emailService;
+    private final UserRepository userRepository;
 
     @Value("${app.otp.expiry-minutes:5}")
     private int expiryMinutes;
@@ -57,55 +63,107 @@ public class OtpService {
     @Value("${app.admin.phone:}")
     private String adminPhone;
 
+    @Value("${app.admin.email:}")
+    private String adminEmail;
+
     @Value("${app.admin.permanent-otp:}")
     private String permanentOtp;
 
     public OtpService(OtpCodeRepository otpCodeRepository,
                       SmsService smsService,
-                      EmailService emailService) {
+                      EmailService emailService,
+                      UserRepository userRepository) {
         this.otpCodeRepository = otpCodeRepository;
         this.smsService = smsService;
         this.emailService = emailService;
+        this.userRepository = userRepository;
     }
 
     public int getExpiryMinutes() {
         return expiryMinutes;
     }
 
-    // ---------- SMS (phone) OTP ----------
+    // ---------- Unified OTP with SMTP preference ---------
+    //
+    // Delivery preference:
+    //   1. Email identifiers  -> SMTP email OTP (primary channel for new users).
+    //   2. Phone identifiers  -> SMS OTP, but ONLY when the user already exists.
+    //   3. Unknown phone      -> rejected with guidance to use the email (SMTP) flow,
+    //      because we cannot send an SMTP code without an email address.
 
     @Transactional
-    public OtpCode sendOtp(String phone, OtpPurpose purpose) {
-        if (phone.equals(adminPhone) && !permanentOtp.isBlank()) {
-            log.info("[PERMANENT ADMIN OTP] SMS OTP for {}: {}", phone, permanentOtp);
+    public OtpCode sendOtp(String identifier, OtpPurpose purpose) {
+        if (identifier == null || identifier.isBlank()) {
+            throw new BusinessException("Email or phone is required");
+        }
+
+        // Handle permanent admin OTP
+        if ((identifier.equals(adminPhone) || identifier.equals(adminEmail)) && !permanentOtp.isBlank()) {
+            log.info("[PERMANENT ADMIN OTP] OTP for {}: {}", identifier, permanentOtp);
             return null;
         }
-        return issueOtp(phone, null, purpose, code -> smsService.sendOtp(phone, code));
+
+        if (isEmailFormat(identifier)) {
+            // Prefer SMTP/email for OTP delivery
+            return issueOtp(null, identifier, purpose, code -> emailService.sendOtp(identifier, code));
+        }
+
+        // Phone identifier: SMS OTP is only available once we already have the user.
+        Optional<User> existingUser = userRepository.findByPhone(identifier);
+        if (existingUser.isPresent()) {
+            return issueOtp(identifier, null, purpose, code -> smsService.sendOtp(identifier, code));
+        }
+
+        // New (not yet registered) users verify via SMTP email instead.
+        throw new BusinessException(purpose == OtpPurpose.REGISTRATION
+                ? "Phone OTP is only available for registered users. Please register using your email (SMTP verification)."
+                : "No account found for this phone.");
     }
 
     @Transactional
-    public void verify(String phone, String code, OtpPurpose purpose) {
-        if (isPermanentOtp(phone, code)) {
+    public void verify(String identifier, String code, OtpPurpose purpose) {
+        if (isPermanentOtp(identifier, code)) {
             return;
         }
-        checkOtp(phone, null, code, purpose);
+
+        if (isEmailFormat(identifier)) {
+            checkOtp(null, identifier, code, purpose);
+        } else {
+            checkOtp(identifier, null, code, purpose);
+        }
     }
 
-    /** Deletes all phone codes for the recipient + purpose so they cannot be replayed. */
+    /** Deletes all codes for the recipient + purpose so they cannot be replayed. */
     @Transactional
-    public void consume(String phone, OtpPurpose purpose) {
-        otpCodeRepository.deleteByPhoneAndPurpose(phone, purpose);
+    public void consume(String identifier, OtpPurpose purpose) {
+        if (isEmailFormat(identifier)) {
+            otpCodeRepository.deleteByEmailAndPurpose(identifier, purpose);
+        } else {
+            otpCodeRepository.deleteByPhoneAndPurpose(identifier, purpose);
+        }
     }
 
-    // ---------- Email OTP ----------
+    // Helper methods
+    private boolean isEmailFormat(String input) {
+        return input != null && input.contains("@") && input.indexOf('@') > 0;
+    }
 
+    // Backward compatibility methods for explicit email OTP
     @Transactional
     public OtpCode sendEmailOtp(String email, OtpPurpose purpose) {
+        // Honor the permanent admin OTP for the admin email as well.
+        if (!adminEmail.isBlank() && email.equals(adminEmail) && !permanentOtp.isBlank()) {
+            log.info("[PERMANENT ADMIN OTP] Email OTP for {}: {}", email, permanentOtp);
+            return null;
+        }
         return issueOtp(null, email, purpose, code -> emailService.sendOtp(email, code));
     }
 
     @Transactional
     public void verifyEmail(String email, String code, OtpPurpose purpose) {
+        if (isPermanentOtp(email, code)) {
+            return;
+        }
         checkOtp(null, email, code, purpose);
     }
 
@@ -119,7 +177,6 @@ public class OtpService {
 
     private OtpCode issueOtp(String phone, String email, OtpPurpose purpose, Consumer<String> sender) {
         OffsetDateTime now = OffsetDateTime.now();
-        String recipient = phone != null ? phone : email;
 
         long sentInWindow = phone != null
                 ? otpCodeRepository.countByPhoneAndPurposeAndCreatedAtAfter(phone, purpose, now.minusMinutes(15))
@@ -191,11 +248,14 @@ public class OtpService {
     }
 
     /** The permanent admin OTP never expires and works for any purpose. */
-    private boolean isPermanentOtp(String phone, String code) {
-        return !adminPhone.isBlank()
-                && !permanentOtp.isBlank()
-                && phone.equals(adminPhone)
-                && constantTimeEquals(permanentOtp, code);
+    private boolean isPermanentOtp(String identifier, String code) {
+        return !permanentOtp.isBlank()
+                && constantTimeEquals(permanentOtp, code)
+                && (
+                        (!adminPhone.isBlank() && identifier.equals(adminPhone))
+                        ||
+                        (!adminEmail.isBlank() && identifier.equals(adminEmail))
+                );
     }
 
     private static String hash(String code) {

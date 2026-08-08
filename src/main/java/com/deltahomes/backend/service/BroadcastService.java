@@ -31,8 +31,9 @@ public class BroadcastService {
         Page<BroadcastSummary> page = broadcastRepository.searchIndex(
                 q == null ? "" : q.trim(),
                 companyId,
-                type == null ? null : type.name(),
-                PageUtils.normalizeSort(pageable));
+                type,
+                PageUtils.normalizeSort(pageable))
+            .map(this::toSummary);
         return PaginatedResponse.from(page);
     }
 
@@ -49,6 +50,18 @@ public class BroadcastService {
 
         broadcast.setCompany(company);
         return broadcastRepository.save(broadcast);
+    }
+
+    private BroadcastSummary toSummary(Broadcast b) {
+        return new BroadcastSummary() {
+            @Override public UUID getId() { return b.getId(); }
+            @Override public String getTitle() { return b.getTitle(); }
+            @Override public String getBody() { return b.getBody(); }
+            @Override public String getType() { return b.getType() != null ? b.getType().name() : null; }
+            @Override public java.time.OffsetDateTime getCreatedAt() { return b.getCreatedAt(); }
+            @Override public UUID getCompanyId() { return b.getCompany() != null ? b.getCompany().getId() : null; }
+            @Override public String getCompanyName() { return b.getCompany() != null ? b.getCompany().getName() : null; }
+        };
     }
 
     private int getBroadcastCap(SubscriptionTier plan) {
