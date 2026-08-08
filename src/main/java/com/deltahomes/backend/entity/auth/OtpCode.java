@@ -6,7 +6,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 /**
  * One-time password (SMS OTP) code for phone verification during
@@ -36,7 +37,7 @@ public class OtpCode extends BaseEntity {
     private OtpPurpose purpose;
 
     @Column(name = "expires_at", nullable = false)
-    private LocalDateTime expiresAt;
+    private OffsetDateTime expiresAt;
 
     @Column(name = "attempts", nullable = false)
     private Integer attempts = 0;
