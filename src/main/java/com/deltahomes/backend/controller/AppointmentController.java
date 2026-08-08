@@ -1,5 +1,6 @@
 package com.deltahomes.backend.controller;
 
+import com.deltahomes.backend.dto.appointment.AppointmentDtos;
 import com.deltahomes.backend.dto.common.PaginatedResponse;
 import com.deltahomes.backend.dto.summary.AppointmentSummary;
 import com.deltahomes.backend.entity.communication.Appointment;
@@ -7,8 +8,10 @@ import com.deltahomes.backend.entity.enums.AppointmentStatus;
 import com.deltahomes.backend.entity.user.User;
 import com.deltahomes.backend.service.AppointmentService;
 import com.deltahomes.backend.service.UserContext;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -39,16 +42,31 @@ public class AppointmentController {
     }
 
     @PostMapping
-    public ResponseEntity<Appointment> bookAppointment(@RequestBody Appointment appointment) {
-        return ResponseEntity.ok(appointmentService.bookAppointment(appointment));
+    public ResponseEntity<Appointment> bookAppointment(
+            @AuthenticationPrincipal UserDetails principal,
+            @Valid @RequestBody AppointmentDtos.CreateAppointmentRequest request) {
+        User user = userContext.currentUser(principal);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(appointmentService.bookAppointment(user, request));
+    }
+
+    @PutMapping("/{id}/status")
+    public ResponseEntity<Appointment> updateAppointmentStatus(
+            @AuthenticationPrincipal UserDetails principal,
+            @PathVariable UUID id,
+            @Valid @RequestBody AppointmentDtos.UpdateAppointmentStatusRequest request) {
+        User user = userContext.currentUser(principal);
+        return ResponseEntity.ok(appointmentService.updateStatus(id, request.status(), user));
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<Appointment> updateAppointmentStatus(
+    public ResponseEntity<Appointment> updateAppointmentStatusLegacy(
+            @AuthenticationPrincipal UserDetails principal,
             @PathVariable UUID id,
             @RequestBody Map<String, String> request) {
+        User user = userContext.currentUser(principal);
         AppointmentStatus status = AppointmentStatus.valueOf(
                 request.get("status").toUpperCase());
-        return ResponseEntity.ok(appointmentService.updateStatus(id, status));
+        return ResponseEntity.ok(appointmentService.updateStatus(id, status, user));
     }
 }
