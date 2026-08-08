@@ -6,7 +6,7 @@ import com.deltahomes.backend.entity.enums.CompanyType;
 import com.deltahomes.backend.entity.enums.EntityType;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 /**
@@ -22,7 +22,7 @@ public final class SocialDtos {
             UUID id,
             EntityType entityType,
             UUID entityId,
-            LocalDateTime createdAt
+            OffsetDateTime createdAt
     ) {
         public static SavedItemResponse from(SavedItem item) {
             return new SavedItemResponse(item.getId(), item.getEntityType(), item.getEntityId(), item.getCreatedAt());

@@ -10,7 +10,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 /**
@@ -240,7 +240,7 @@ public final class AuthDtos {
             UserRole role,
             UserStatus status,
             byte verificationLevel,
-            LocalDateTime createdAt
+            OffsetDateTime createdAt
     ) {
 
         /** Safe projection of a {@link User} — never exposes the password hash. */
