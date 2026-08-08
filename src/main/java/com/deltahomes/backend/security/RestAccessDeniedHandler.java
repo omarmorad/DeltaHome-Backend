@@ -9,7 +9,7 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.Map;
 
 @Component
@@ -27,7 +27,7 @@ public class RestAccessDeniedHandler implements AccessDeniedHandler {
         response.setStatus(HttpServletResponse.SC_FORBIDDEN);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         objectMapper.writeValue(response.getOutputStream(), Map.of(
-                "timestamp", LocalDateTime.now(),
+                "timestamp", OffsetDateTime.now(),
                 "status", 403,
                 "error", "Forbidden",
                 "message", "You do not have permission to perform this action"
