@@ -60,4 +60,12 @@ public final class SocialDtos {
             );
         }
     }
+
+    /** Response body for {@code POST /api/v1/companies/{id}/follow}. */
+    public record FollowResponse(
+            UUID companyId,
+            String companyName,
+            boolean following
+    ) {
+    }
 }

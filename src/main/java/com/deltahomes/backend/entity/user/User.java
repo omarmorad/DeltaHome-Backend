@@ -4,6 +4,7 @@ import com.deltahomes.backend.entity.base.BaseEntity;
 import com.deltahomes.backend.entity.enums.UserRole;
 import com.deltahomes.backend.entity.enums.UserStatus;
 import com.deltahomes.backend.entity.location.City;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -25,6 +26,7 @@ public class User extends BaseEntity {
     @Column(name = "email", length = 150, unique = true)
     private String email;
 
+    @JsonIgnore
     @Column(name = "password_hash", length = 255, nullable = false)
     private String passwordHash;
 
