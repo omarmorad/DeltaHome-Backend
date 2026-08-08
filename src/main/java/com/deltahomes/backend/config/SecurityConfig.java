@@ -55,7 +55,7 @@ public class SecurityConfig {
                         "/api/v1/companies", "/api/v1/companies/*",
                         "/api/v1/cities", "/api/v1/districts",
                         "/api/v1/services", "/api/v1/features", "/api/v1/plans",
-                        "/api/v1/reviews", "/api/v1/reviews/*").permitAll()
+                        "/api/v1/reviews", "/api/v1/reviews/**").permitAll()
                 .requestMatchers("/api/v1/search").permitAll()
                 .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
