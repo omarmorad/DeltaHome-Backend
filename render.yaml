@@ -7,7 +7,7 @@
 
 databases:
   - name: delta-homes-db
-    databaseName: deltahomes
+    databaseName: deltahome
     plan: free
     postgresMajorVersion: "16"
 
@@ -26,7 +26,7 @@ services:
       # --- Database (Postgres) ---
       # The JDBC driver needs a `jdbc:` URL. Render's connectionString uses the
       # postgres:// scheme, so build the URL manually from the dashboard's
-      # "Internal Database URL": jdbc:postgresql://<host>:5432/deltahomes
+      # "Internal Database URL": jdbc:postgresql://<host>:5432/deltahome
       - key: DB_URL
         sync: false
       - key: DB_USERNAME

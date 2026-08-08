@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "7f4c2d0e-9b3a-4f6e-8d1c-3a5b7e9f2a41",
     "name": "Delta Homes API",
-    "description": "Backend REST API for the Delta Homes marketplace (Spring Boot + PostgreSQL).\n\nBase URL is controlled by the collection variable `baseUrl` (default http://localhost:8080).\n\nThe `token` and `refreshToken` collection variables are set automatically after a successful **Login** or **Login with OTP** request, so authenticated requests can use `Authorization: Bearer {{token}}`.\n\nTo register a new account:\n1. POST /auth/otp/send with purpose REGISTRATION\n2. Read the OTP from the server console (dev mode) or the SMS.\n3. POST /auth/register with the code in `otpCode`.\n\n## List (index) endpoints\n\nEvery list endpoint returns a uniform paginated envelope:\n\n```json\n{\n  \"content\": [ ... ],\n  \"page\": 0,\n  \"size\": 20,\n  \"totalElements\": 0,\n  \"totalPages\": 0,\n  \"hasNext\": false\n}\n```\n\nAll list endpoints support Spring Data paging via `page` (0-based), `size`, and `sort` (e.g. `sort=price,desc`). Sort properties are camelCase and are mapped to snake_case columns automatically.\n\nMost also support PostgreSQL full-text search through the `q` parameter (matched against a generated `search_vector` column), e.g. `q=apartment` or `q=\"fully finished\"`.\n\nFilter query parameters are optional; pass any combination you need. All public list endpoints only return verified/published records.",
+    "description": "Backend REST API for the Delta Homes marketplace (Spring Boot + PostgreSQL).\n\nBase URL is controlled by the collection variable `baseUrl` (default http://localhost:8080).\n\nThe `token` and `refreshToken` collection variables are set automatically after a successful **Login**, **Login with Email**, **Login with OTP** or **Login with Email OTP** request, so authenticated requests can use `Authorization: Bearer {{token}}`.\n\n## OTP & registration (SMTP-first)\n\nOTP delivery is **SMTP (email) first**:\n- `POST /auth/otp/send-email` sends a code to an email address (used by new users).\n- `POST /auth/otp/send` (phone) only works for **already-registered** users (SMS). Unknown phones are rejected with a message directing to the email flow.\n\nTo register a new account (recommended flow):\n1. `POST /auth/otp/send-email` with purpose REGISTRATION\n2. Read the OTP from the server console (dev mode, no SMTP configured) or the inbox.\n3. `POST /auth/register-email` with the code in `otpCode`.\n\n## List (index) endpoints\n\nEvery list endpoint returns a uniform paginated envelope:\n\n```json\n{\n  \"content\": [ ... ],\n  \"page\": 0,\n  \"size\": 20,\n  \"totalElements\": 0,\n  \"totalPages\": 0,\n  \"hasNext\": false\n}\n```\n\nAll list endpoints support Spring Data paging via `page` (0-based), `size`, and `sort` (e.g. `sort=price,desc`). Sort properties are camelCase and are mapped to snake_case columns automatically.\n\nMost also support PostgreSQL full-text search through the `q` parameter (matched against a generated `search_vector` column), e.g. `q=apartment` or `q=\"fully finished\"`.\n\nFilter query parameters are optional; pass any combination you need.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -24,7 +24,7 @@
       "name": "Auth",
       "item": [
         {
-          "name": "Send OTP",
+          "name": "Send OTP (phone)",
           "request": {
             "method": "POST",
             "header": [
@@ -55,11 +55,11 @@
                 "send"
               ]
             },
-            "description": "Sends a 6-digit SMS OTP. `purpose` is one of REGISTRATION | LOGIN | PASSWORD_RESET.\nIn dev mode (no Twilio credentials) the code is printed to the server console."
+            "description": "Sends a 6-digit SMS OTP. `purpose` is one of REGISTRATION | LOGIN | PASSWORD_RESET.\\nSMS is only sent to **existing** users (phone already registered). Unknown phones are rejected - new users must use Send Email OTP. In dev mode (no SMTP/Twilio credentials) codes are printed to the server console."
           }
         },
         {
-          "name": "Verify OTP",
+          "name": "Verify OTP (phone)",
           "request": {
             "method": "POST",
             "header": [
@@ -70,7 +70,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"phone\": \"01012345678\",\n  \"code\": \"123456\",\n  \"purpose\": \"REGISTRATION\"\n}",
+              "raw": "{\n  \"phone\": \"01012345678\",\n  \"code\": \"123456\",\n  \"purpose\": \"LOGIN\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -90,11 +90,81 @@
                 "verify"
               ]
             },
-            "description": "Verifies an OTP code without creating any account. Optional — the register/login endpoints verify the code themselves."
+            "description": "Verifies a phone OTP without creating an account. Optional - the register/login endpoints verify the code themselves."
           }
         },
         {
-          "name": "Register",
+          "name": "Send Email OTP (SMTP)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"purpose\": \"REGISTRATION\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/otp/send-email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "otp",
+                "send-email"
+              ]
+            },
+            "description": "Sends a 6-digit OTP to an email address via SMTP - the primary channel for **new** users. `purpose` is one of REGISTRATION | LOGIN | PASSWORD_RESET. When no SMTP host is configured (dev mode) the code is logged to the server console."
+          }
+        },
+        {
+          "name": "Verify Email OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"code\": \"123456\",\n  \"purpose\": \"REGISTRATION\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/otp/verify-email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "otp",
+                "verify-email"
+              ]
+            },
+            "description": "Verifies an email OTP without creating an account. Optional - the register-email/login endpoints verify the code themselves."
+          }
+        },
+        {
+          "name": "Register (phone)",
           "request": {
             "method": "POST",
             "header": [
@@ -124,11 +194,45 @@
                 "register"
               ]
             },
-            "description": "Registers a new account. Requires a verified REGISTRATION OTP. `role` is one of CUSTOMER | OWNER | OFFICE | COMPANY | TECHNICIAN (ADMIN is provisioned by the platform). Returns access + refresh tokens."
+            "description": "Phone-based registration. Note: with the SMTP-first OTP policy, phone OTP is only sent to **existing** users, so new accounts should be created via Register with Email. `role` is one of CUSTOMER | OWNER | OFFICE | COMPANY | TECHNICIAN (ADMIN is provisioned by the platform)."
           }
         },
         {
-          "name": "Login",
+          "name": "Register with Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ahmed Hassan\",\n  \"email\": \"user@example.com\",\n  \"password\": \"secret123\",\n  \"role\": \"CUSTOMER\",\n  \"otpCode\": \"123456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register-email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register-email"
+              ]
+            },
+            "description": "Registers a new account with an email. Requires a verified REGISTRATION OTP sent via Send Email OTP (SMTP). `role` is one of CUSTOMER | OWNER | OFFICE | COMPANY | TECHNICIAN (ADMIN is provisioned by the platform). Returns access + refresh tokens."
+          }
+        },
+        {
+          "name": "Login (phone)",
           "request": {
             "method": "POST",
             "header": [
@@ -179,7 +283,59 @@
           }
         },
         {
-          "name": "Login with OTP",
+          "name": "Login with Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"secret123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login",
+                "email"
+              ]
+            },
+            "description": "Logs in with email + password. Stores the returned tokens in the collection variables for subsequent requests.",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "const json = pm.response.json();",
+                    "if (json.accessToken) {",
+                    "  pm.collectionVariables.set('token', json.accessToken);",
+                    "  pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                    "}",
+                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                    "pm.test('Has access token', () => pm.expect(json.accessToken).to.be.a('string'));"
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "Login with OTP (phone)",
           "request": {
             "method": "POST",
             "header": [
@@ -210,7 +366,75 @@
                 "otp"
               ]
             },
-            "description": "Password-less login using a LOGIN-purpose OTP. The account must already exist. Also stores tokens into collection variables."
+            "description": "Password-less login using a LOGIN-purpose phone OTP. The account must already exist (SMS is only sent to existing users). Stores tokens into collection variables.",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "const json = pm.response.json();",
+                    "if (json.accessToken) {",
+                    "  pm.collectionVariables.set('token', json.accessToken);",
+                    "  pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                    "}",
+                    "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "Login with Email OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"otpCode\": \"123456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login/otp/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login",
+                "otp",
+                "email"
+              ]
+            },
+            "description": "Password-less login using a LOGIN-purpose email OTP (SMTP). Stores tokens into collection variables.",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "const json = pm.response.json();",
+                    "if (json.accessToken) {",
+                    "  pm.collectionVariables.set('token', json.accessToken);",
+                    "  pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                    "}",
+                    "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                  ]
+                }
+              }
+            ]
           }
         },
         {
@@ -311,7 +535,7 @@
           }
         },
         {
-          "name": "Reset Password (via OTP)",
+          "name": "Reset Password (phone OTP)",
           "request": {
             "method": "POST",
             "header": [
@@ -342,7 +566,43 @@
                 "reset"
               ]
             },
-            "description": "Resets a forgotten password. Requires a PASSWORD_RESET OTP sent to the account phone. No authentication needed."
+            "description": "Resets a forgotten password. Requires a PASSWORD_RESET OTP sent to the account phone (existing users only). No authentication needed."
+          }
+        },
+        {
+          "name": "Reset Password (email OTP)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"otpCode\": \"123456\",\n  \"newPassword\": \"brandnew123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/password/reset/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "password",
+                "reset",
+                "email"
+              ]
+            },
+            "description": "Resets a forgotten password using a PASSWORD_RESET email OTP (SMTP). No authentication needed."
           }
         },
         {
@@ -405,7 +665,7 @@
                 }
               ]
             },
-            "description": "Paginated list of cities with optional full-text search on the city name (Arabic and English). Public."
+            "description": "Paginated list of cities with optional full-text search on the city name (Arabic and English). Returns CitySummary projections. Public."
           }
         },
         {
@@ -442,7 +702,7 @@
                 }
               ]
             },
-            "description": "Paginated list of districts. Optional `q` full-text search and optional `cityId` filter. Public."
+            "description": "Paginated list of districts. Optional `q` full-text search and optional `cityId` filter. Returns DistrictSummary projections. Public."
           }
         },
         {
@@ -479,7 +739,7 @@
                 }
               ]
             },
-            "description": "Paginated list of services (finishing / maintenance categories). Optional `q` full-text search and optional `category` filter. Public."
+            "description": "Paginated list of services (finishing / maintenance categories). Optional `q` full-text search and optional `category` filter. Returns ServiceSummary projections. Public."
           }
         },
         {
@@ -512,7 +772,7 @@
                 }
               ]
             },
-            "description": "Paginated list of property features with optional `q` full-text search. Public."
+            "description": "Paginated list of property features with optional `q` full-text search. Returns FeatureSummary projections. Public."
           }
         },
         {
@@ -553,7 +813,7 @@
                 }
               ]
             },
-            "description": "Paginated list of subscription plans. Optional `q` search, `tier` (BASIC | PREMIUM | ENTERPRISE) and `isActive` filters. Public."
+            "description": "Paginated list of subscription plans. Optional `q` search, `tier` (BASIC | PREMIUM | ENTERPRISE) and `isActive` filters. Returns SubscriptionPlanSummary projections. Public."
           }
         }
       ]
@@ -615,7 +875,7 @@
                 }
               ]
             },
-            "description": "Paginated property index with PostgreSQL full-text search (`q` against title + description) and filters: `cityId`, `districtId`, `purpose` (SALE | RENT), `minPrice`, `maxPrice`. Supports `sort` (e.g. `price,desc`, `createdAt,asc`) and paging. Only PUBLISHED properties are returned. Response is the standard PaginatedResponse envelope with a `content` array of property summaries."
+            "description": "Paginated property index with PostgreSQL full-text search (`q`) and filters: `cityId`, `districtId`, `purpose` (SALE | RENT), `minPrice`, `maxPrice`. Supports `sort` (e.g. `price,desc`, `createdAt,asc`) and paging. Only PUBLISHED properties are returned. Response is the standard PaginatedResponse envelope with PropertySummary items."
           }
         },
         {
@@ -635,7 +895,7 @@
                 "44444444-4444-4444-4444-444444444444"
               ]
             },
-            "description": "Returns full details of a single property by UUID. Note: this endpoint currently returns the full entity (including nested relationships) — the list endpoint uses a safe summary projection."
+            "description": "Returns full details of a single property by UUID. The response is the raw entity; lazy associations serialize as `{\"id\": ...}` (safe, no credentials). Public."
           }
         },
         {
@@ -654,7 +914,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Apartment in Toriel\",\n  \"description\": \"3 bedroom apartment, fully finished\",\n  \"price\": 750000,\n  \"purpose\": \"SALE\"\n}",
+              "raw": "{\n  \"title\": \"Apartment in Toriel\",\n  \"description\": \"3 bedroom apartment, fully finished\",\n  \"price\": 750000,\n  \"purpose\": \"SALE\",\n  \"category\": \"APARTMENT\",\n  \"city\": {\n    \"id\": \"11111111-1111-1111-1111-111111111111\"\n  },\n  \"district\": {\n    \"id\": \"22222222-2222-2222-2222-222222222222\"\n  },\n  \"street\": \"Toriel Main Street\",\n  \"readiness\": \"READY\",\n  \"finishingLevel\": \"FINISHED\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -672,7 +932,7 @@
                 "properties"
               ]
             },
-            "description": "Creates a property listing. Requires authentication (Owner / Office / Admin)."
+            "description": "Creates a property listing (returns 201). Requires authentication - the `owner` is taken from the token and `status` is forced to DRAFT. Required fields: title, price, purpose, category, city (nested id), district (nested id), readiness. `purpose` is SALE | RENT; `readiness` is READY | UNDER_CONSTRUCTION; `finishingLevel` is UNFINISHED | SEMI_FINISHED | FINISHED | LUXURY."
           }
         }
       ]
@@ -714,7 +974,7 @@
                 }
               ]
             },
-            "description": "Paginated company index with full-text search (`q` against name, description, phone, email, website) and optional `type` filter (REAL_ESTATE_OFFICE | FINISHING_COMPANY | MAINTENANCE_PROVIDER). Supports `sort` and paging. Only VERIFIED companies are returned. Public."
+            "description": "Paginated company index with full-text search (`q`) and optional `type` filter (REAL_ESTATE_OFFICE | FINISHING_COMPANY | MAINTENANCE_PROVIDER). Supports `sort` and paging. Only VERIFIED companies are returned. Returns CompanySummary projections. Public."
           }
         },
         {
@@ -734,7 +994,44 @@
                 "33333333-3333-3333-3333-333333333333"
               ]
             },
-            "description": "Returns a company profile by UUID (finishing / maintenance provider). Public."
+            "description": "Returns a company profile by UUID (raw entity; lazy relations serialize as id-only). Public."
+          }
+        },
+        {
+          "name": "Create Company",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Toriel Finishing Co.\",\n  \"type\": \"FINISHING_COMPANY\",\n  \"description\": \"Interior design and full finishing packages\",\n  \"logoUrl\": \"https://example.com/logo.png\",\n  \"coverUrl\": \"https://example.com/cover.png\",\n  \"phone\": \"01012345678\",\n  \"whatsapp\": \"01012345678\",\n  \"email\": \"contact@torielfinishing.com\",\n  \"website\": \"https://torielfinishing.com\",\n  \"coverageArea\": \"[\\\"Damietta\\\", \\\"New Damietta\\\"]\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/companies",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "companies"
+              ]
+            },
+            "description": "Creates a company profile (returns 201). Requires authentication - `owner` is taken from the token; `verified`, `followersCount`, `reputationScore` and `plan` are server-controlled defaults. `type` is REAL_ESTATE_OFFICE | FINISHING_COMPANY | MAINTENANCE_PROVIDER. `coverageArea` is a JSONB string."
           }
         },
         {
@@ -760,7 +1057,84 @@
                 "follow"
               ]
             },
-            "description": "Follows/unfollows a company to receive its broadcasts. Requires authentication."
+            "description": "Follows a company to receive its broadcasts. Requires authentication. Returns a FollowResponse: `{\"companyId\": ..., \"companyName\": ..., \"following\": true}`."
+          }
+        },
+        {
+          "name": "Unfollow Company",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/companies/33333333-3333-3333-3333-333333333333/follow",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "companies",
+                "33333333-3333-3333-3333-333333333333",
+                "follow"
+              ]
+            },
+            "description": "Unfollows a company. Requires authentication. Returns 200."
+          }
+        },
+        {
+          "name": "Get Followed Companies",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/companies/followed",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "companies",
+                "followed"
+              ]
+            },
+            "description": "Returns the list of companies followed by the authenticated user (CompanySummaryResponse array). Requires authentication."
+          }
+        },
+        {
+          "name": "Is Following Company",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/companies/33333333-3333-3333-3333-333333333333/is-following",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "companies",
+                "33333333-3333-3333-3333-333333333333",
+                "is-following"
+              ]
+            },
+            "description": "Checks whether the authenticated user follows the company. Returns `{\"following\": true|false}`. Requires authentication."
           }
         }
       ]
@@ -810,7 +1184,29 @@
                 }
               ]
             },
-            "description": "Paginated review index. Optional `q` full-text search on the review comment, `entityType` (PROPERTY | COMPANY | TECHNICIAN | SERVICE_PROVIDER), `entityId` and `minRating` (1-5) filters. Supports `sort` (e.g. `rating,desc`) and paging. Public."
+            "description": "Paginated review index. Optional `q` full-text search on the review comment, `entityType` (PROPERTY | COMPANY | TECHNICIAN | SERVICE_PROVIDER), `entityId` and `minRating` (1-5) filters. Supports `sort` (e.g. `rating,desc`). Returns ReviewSummary projections. Public."
+          }
+        },
+        {
+          "name": "Get Review Summary (Aggregate)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reviews/summary/COMPANY/33333333-3333-3333-3333-333333333333",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reviews",
+                "summary",
+                "COMPANY",
+                "33333333-3333-3333-3333-333333333333"
+              ]
+            },
+            "description": "Returns rating aggregates for an entity: `{\"ratingCount\": 5, \"averageRating\": 4.2, \"distribution\": {\"1\":0,\"2\":0,\"3\":1,\"4\":2,\"5\":2}}`. `entityType` is PROPERTY | COMPANY | TECHNICIAN | SERVICE_PROVIDER. Public."
           }
         },
         {
@@ -829,7 +1225,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"entityType\": \"COMPANY\",\n  \"entityId\": \"33333333-3333-3333-3333-333333333333\",\n  \"rating\": 5,\n  \"comment\": \"Great finishing work\"\n}",
+              "raw": "{\n  \"entityType\": \"COMPANY\",\n  \"entityId\": \"33333333-3333-3333-3333-333333333333\",\n  \"rating\": 5,\n  \"comment\": \"Great finishing work\",\n  \"sourceAppointmentId\": \"1c2d3e4f-5a6b-7c8d-9e0f-1a2b3c4d5e6f\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -847,7 +1243,7 @@
                 "reviews"
               ]
             },
-            "description": "Creates a review on an entity (property / company / technician). Requires an accepted appointment (interaction_verified). Requires authentication."
+            "description": "Creates a review (returns 201). Requires authentication. Rules: one review per user per entity; rating 1-5; if `sourceAppointmentId` is provided it must belong to the reviewer and be ACCEPTED/COMPLETED (interaction gate) for `interactionVerified=true`."
           }
         }
       ]
@@ -890,7 +1286,7 @@
                 }
               ]
             },
-            "description": "Paginated list of the authenticated user's appointments, both as customer and as owner/company. Optional `status` filter (PENDING | ACCEPTED | REJECTED | COMPLETED | CANCELLED). Requires authentication."
+            "description": "Paginated list of the authenticated user's appointments, both as customer and as owner/company. Optional `status` filter (PENDING | ACCEPTED | REJECTED | COMPLETED | CANCELLED). Returns AppointmentSummary projections. Requires authentication."
           }
         },
         {
@@ -909,7 +1305,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"propertyId\": \"44444444-4444-4444-4444-444444444444\",\n  \"appointmentType\": \"VISIT\",\n  \"scheduledAt\": \"2026-08-05T11:00:00\"\n}",
+              "raw": "{\n  \"propertyId\": \"44444444-4444-4444-4444-444444444444\",\n  \"requestedSlot\": \"2026-08-20T11:00:00+02:00\",\n  \"note\": \"Interested in a viewing\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -927,11 +1323,50 @@
                 "appointments"
               ]
             },
-            "description": "Books a property visit or service appointment. Requires authentication."
+            "description": "Books a property viewing (returns 201). Requires authentication - `customer` is taken from the token and `owner` is derived from the property. `requestedSlot` is an ISO-8601 OffsetDateTime and must be in the future. Status starts as PENDING."
           }
         },
         {
           "name": "Update Appointment Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACCEPTED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/appointments/1c2d3e4f-5a6b-7c8d-9e0f-1a2b3c4d5e6f/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "1c2d3e4f-5a6b-7c8d-9e0f-1a2b3c4d5e6f",
+                "status"
+              ]
+            },
+            "description": "Updates an appointment status. Allowed transitions: PENDING -> ACCEPTED | REJECTED | CANCELLED; ACCEPTED -> COMPLETED | CANCELLED. Only the customer, the property owner or an admin may change the status. Requires authentication."
+          }
+        },
+        {
+          "name": "Update Appointment Status (Legacy PATCH)",
           "request": {
             "method": "PATCH",
             "header": [
@@ -965,7 +1400,7 @@
                 "1c2d3e4f-5a6b-7c8d-9e0f-1a2b3c4d5e6f"
               ]
             },
-            "description": "Updates an appointment status: PENDING | ACCEPTED | REJECTED | COMPLETED | CANCELLED."
+            "description": "Legacy status update (same rules as the PUT /status endpoint). Prefer `PUT /api/v1/appointments/{id}/status`."
           }
         }
       ]
@@ -984,13 +1419,14 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/conversations?page=0&size=20",
+              "raw": "{{baseUrl}}/api/v1/chat/conversations?page=0&size=20",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "v1",
+                "chat",
                 "conversations"
               ],
               "query": [
@@ -1004,7 +1440,71 @@
                 }
               ]
             },
-            "description": "Paginated list of the authenticated user's conversations, newest first. Each entry includes the other participant's id/name and the last message preview. Requires authentication."
+            "description": "Paginated list of the authenticated user's conversations, newest first. Each entry includes the other participant's id/name and the last message preview. The legacy path `/api/v1/conversations` also works. Requires authentication."
+          }
+        },
+        {
+          "name": "Create Conversation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"participantIds\": [\n    \"a6000000-0000-0000-0000-000000000001\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/chat/conversations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chat",
+                "conversations"
+              ]
+            },
+            "description": "Creates (or returns the existing) 1:1 conversation between the authenticated user and the given participant (returns 201). Conversations are currently 1:1 - provide exactly one participant id, not yourself."
+          }
+        },
+        {
+          "name": "Get Conversation",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/chat/conversations/1c2d3e4f-5a6b-7c8d-9e0f-1a2b3c4d5e6f",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chat",
+                "conversations",
+                "1c2d3e4f-5a6b-7c8d-9e0f-1a2b3c4d5e6f"
+              ]
+            },
+            "description": "Returns a single conversation (participants + preview + last-seen markers). Only accessible to the participants. Requires authentication."
           }
         },
         {
@@ -1018,13 +1518,14 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/conversations/1c2d3e4f-5a6b-7c8d-9e0f-1a2b3c4d5e6f/messages?q=&page=0&size=50",
+              "raw": "{{baseUrl}}/api/v1/chat/conversations/1c2d3e4f-5a6b-7c8d-9e0f-1a2b3c4d5e6f/messages?q=&page=0&size=50",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "v1",
+                "chat",
                 "conversations",
                 "1c2d3e4f-5a6b-7c8d-9e0f-1a2b3c4d5e6f",
                 "messages"
@@ -1044,7 +1545,7 @@
                 }
               ]
             },
-            "description": "Paginated list of messages in a conversation, with optional `q` full-text search on the message text. Requires authentication (participants only)."
+            "description": "Paginated list of messages in a conversation, with optional `q` full-text search on the message text. Participants only (403 otherwise). Returns MessageSummary projections. Requires authentication."
           }
         },
         {
@@ -1071,19 +1572,47 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/conversations/1c2d3e4f-5a6b-7c8d-9e0f-1a2b3c4d5e6f/messages",
+              "raw": "{{baseUrl}}/api/v1/chat/conversations/1c2d3e4f-5a6b-7c8d-9e0f-1a2b3c4d5e6f/messages",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "v1",
+                "chat",
                 "conversations",
                 "1c2d3e4f-5a6b-7c8d-9e0f-1a2b3c4d5e6f",
                 "messages"
               ]
             },
-            "description": "Sends a message in a conversation. Text, image or a shared entity card (payload JSON). Requires authentication."
+            "description": "Sends a message in a conversation (returns 201). Body: `content` (text), optional `type` (TEXT | IMAGE | LOCATION | VOICE | PDF | PROPERTY_CARD | APPOINTMENT_CARD; defaults to TEXT), `mediaUrl` and `payload` (JSON string). Content or media is required. Participants only. Updates the conversation preview."
+          }
+        },
+        {
+          "name": "Mark Conversation Read",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/chat/conversations/1c2d3e4f-5a6b-7c8d-9e0f-1a2b3c4d5e6f/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chat",
+                "conversations",
+                "1c2d3e4f-5a6b-7c8d-9e0f-1a2b3c4d5e6f",
+                "read"
+              ]
+            },
+            "description": "Marks the conversation as read by the authenticated participant (updates the last-seen marker). Returns `{\"message\": \"Conversation marked as read\"}`. Participants only."
           }
         }
       ]
@@ -1113,7 +1642,7 @@
                 }
               ]
             },
-            "description": "Universal smart search across properties, companies and services (Meilisearch/Typesense powered). Public."
+            "description": "Universal search across properties, companies and services. NOTE: currently a stub - returns `{\"query\": q, \"results\": \"Meilisearch integration pending\"}`. Public."
           }
         }
       ]
@@ -1156,7 +1685,7 @@
                 }
               ]
             },
-            "description": "Paginated list of the authenticated user's saved items for a given `entityType` (PROPERTY | COMPANY | TECHNICIAN | SERVICE_PROVIDER). `entityType` is required. Requires authentication."
+            "description": "Paginated list of the authenticated user's saved items. `entityType` is REQUIRED (PROPERTY | COMPANY | TECHNICIAN | SERVICE_PROVIDER). Returns SavedItemResponse items. Requires authentication."
           }
         },
         {
@@ -1193,11 +1722,11 @@
                 "saved-items"
               ]
             },
-            "description": "Saves an item (property / company / provider) for the authenticated user. Requires authentication."
+            "description": "Saves an item (property / company / provider) for the authenticated user (returns 201). `entityType` is PROPERTY | COMPANY | TECHNICIAN | SERVICE_PROVIDER. Requires authentication."
           }
         },
         {
-          "name": "Unsave Item",
+          "name": "Unsave Item (by entity)",
           "request": {
             "method": "DELETE",
             "header": [
@@ -1219,7 +1748,32 @@
                 "44444444-4444-4444-4444-444444444444"
               ]
             },
-            "description": "Removes a saved item by entity type and entity id. Requires authentication."
+            "description": "Removes a saved item by entity type + entity id (returns 204). Requires authentication."
+          }
+        },
+        {
+          "name": "Delete Saved Item (by id)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/saved-items/a7000000-0000-0000-0000-000000000001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "saved-items",
+                "a7000000-0000-0000-0000-000000000001"
+              ]
+            },
+            "description": "Spec-compliant delete by saved-item UUID (returns 204). Ownership is enforced - you can only delete your own saved items. Requires authentication."
           }
         }
       ]
@@ -1231,7 +1785,12 @@
           "name": "Search Broadcasts",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/broadcasts?q=discount&companyId=&type=OFFER&page=0&size=20",
               "host": [
@@ -1265,7 +1824,7 @@
                 }
               ]
             },
-            "description": "Paginated broadcast index with full-text search (`q` against title + body) and optional `companyId` / `type` filters. `type` is one of NEW_PROPERTY | OFFER | DISCOUNT | VIDEO | NEWS. Requires authentication."
+            "description": "Paginated broadcast index with full-text search (`q`) and optional `companyId` / `type` filters. `type` is NEW_PROPERTY | OFFER | DISCOUNT | VIDEO | NEWS. Returns BroadcastSummary projections. Requires authentication."
           }
         },
         {
@@ -1302,7 +1861,7 @@
                 "broadcasts"
               ]
             },
-            "description": "Creates a broadcast to followers. Requires an authenticated company user."
+            "description": "Creates a broadcast to followers. NOTE: currently a stub - the payload is echoed back without being persisted. Requires authentication (company user)."
           }
         }
       ]
@@ -1354,7 +1913,7 @@
                 }
               ]
             },
-            "description": "Paginated user index. Optional `q` full-text search (name / phone / email), `role` (CUSTOMER | OWNER | OFFICE | COMPANY | TECHNICIAN | ADMIN) and `status` (ACTIVE | SUSPENDED | PENDING | DELETED) filters. Safe summaries only — no credentials. Requires ADMIN role."
+            "description": "Paginated user index. Optional `q` full-text search (name / phone / email), `role` (CUSTOMER | OWNER | OFFICE | COMPANY | TECHNICIAN | ADMIN) and `status` (ACTIVE | SUSPENDED | PENDING | DELETED) filters. Safe summaries only. Requires ADMIN role."
           }
         },
         {
@@ -1734,7 +2293,7 @@
                 "decision"
               ]
             },
-            "description": "Accepts or rejects a document verification request (`decision`: ACCEPTED | REJECTED). Requires ADMIN role."
+            "description": "Accepts or rejects a document verification request (`decision`: ACCEPTED | REJECTED). NOTE: currently a stub - echoes `{\"verificationId\", \"decision\"}` without persisting. Requires ADMIN role."
           }
         }
       ]
