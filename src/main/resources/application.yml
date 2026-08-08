@@ -7,7 +7,7 @@ spring:
     name: delta-home-backend
 
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/deltahomes}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/deltahome}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:00}
     driver-class-name: org.postgresql.Driver
@@ -51,11 +51,11 @@ spring:
       cache-null-values: false
 
   mail:
-    host: ${MAIL_HOST:}
+    host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:}
-    password: ${MAIL_PASSWORD:}
-    from: ${MAIL_FROM:noreply@deltahomes.app}
+    username: ${MAIL_USERNAME:delta.homes.mans.eg@gmail.com}
+    password: ${MAIL_PASSWORD:pkcr efsb jifw vtig}
+    from: ${MAIL_FROM:delta.homes.mans.eg@gmail.com}
     properties:
       mail:
         smtp:
@@ -118,6 +118,7 @@ app:
     # and `permanent-otp` is always accepted for this phone, for any purpose.
     phone: ${ADMIN_PHONE:01026962089}
     name: ${ADMIN_NAME:Delta Admin}
+    email: ${ADMIN_EMAIL:admin@deltahomes.app}
     password: ${ADMIN_PASSWORD:admin123}
     permanent-otp: ${ADMIN_PERMANENT_OTP:112231}
   seed:
