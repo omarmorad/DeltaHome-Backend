@@ -102,6 +102,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
 
@@ -266,6 +267,10 @@ public class DataSeeder implements CommandLineRunner {
         List<Property> properties = seedProperties(users, cities, districts);
         seedPropertyImages(properties);
         seedPropertyVideos(properties);
+
+        // Self-healing: rows seeded before the bilingual columns existed get
+        // their Arabic content filled in on every startup (idempotent).
+        backfillArabicContent(companies, properties);
 
         seedVerifications(users);
         List<Conversation> conversations = seedConversations(users);
@@ -959,20 +964,40 @@ public class DataSeeder implements CommandLineRunner {
         Company nile = company(companies, "Nile Maintenance & Services");
 
         List<Follower> rows = new ArrayList<>();
-        seed(rows, followerRepository, "a5000000-0000-0000-0000-000000000001",
-                () -> follower(customerOne, deltaFinishing));
-        seed(rows, followerRepository, "a5000000-0000-0000-0000-000000000002",
-                () -> follower(customerTwo, deltaFinishing));
-        seed(rows, followerRepository, "a5000000-0000-0000-0000-000000000003",
-                () -> follower(customerOne, elDelta));
-        seed(rows, followerRepository, "a5000000-0000-0000-0000-000000000004",
-                () -> follower(customerTwo, nile));
-        seed(rows, followerRepository, "a5000000-0000-0000-0000-000000000005",
-                () -> follower(ownerOne, elDelta));
-        seed(rows, followerRepository, "a5000000-0000-0000-0000-000000000006",
-                () -> follower(customerTwo, elDelta));
-        seed(rows, followerRepository, "a5000000-0000-0000-0000-000000000007",
-                () -> follower(customerOne, nile));
+        addFollower(rows, customerOne, deltaFinishing, "a5000000-0000-0000-0000-000000000001");
+        addFollower(rows, customerTwo, deltaFinishing, "a5000000-0000-0000-0000-000000000002");
+        addFollower(rows, customerOne, elDelta, "a5000000-0000-0000-0000-000000000003");
+        addFollower(rows, customerTwo, nile, "a5000000-0000-0000-0000-000000000004");
+        addFollower(rows, ownerOne, elDelta, "a5000000-0000-0000-0000-000000000005");
+        addFollower(rows, customerTwo, elDelta, "a5000000-0000-0000-0000-000000000006");
+        addFollower(rows, customerOne, nile, "a5000000-0000-0000-0000-000000000007");
+
+        // Reconcile denormalized counters with the actual follower rows.
+        // Runs every startup so drift (from direct inserts or older versions
+        // of this seeder that never touched the counter) is self-healing.
+        for (Company c : List.of(deltaFinishing, elDelta, nile)) {
+            long actual = followerRepository.countByCompanyId(c.getId());
+            if (c.getFollowersCount() == null || c.getFollowersCount() != actual) {
+                c.setFollowersCount((int) actual);
+                companyRepository.save(c);
+            }
+        }
+    }
+
+    /**
+     * Followers have a DB unique constraint on (user_id, company_id). A row for
+     * the pair may already exist from the API (with a random UUID), so guard on
+     * the PAIR — checking only the fixed seed id would crash on insert.
+     */
+    private void addFollower(List<Follower> rows, User user, Company company, String uuid) {
+        if (followerRepository.existsByUserIdAndCompanyId(user.getId(), company.getId())) {
+            return;
+        }
+        Follower follower = new Follower();
+        setId(follower, UUID.fromString(uuid));
+        follower.setUser(user);
+        follower.setCompany(company);
+        rows.add(followerRepository.save(follower));
     }
 
     private List<Subscription> seedSubscriptions(List<Company> companies, List<SubscriptionPlan> plans,
@@ -1243,16 +1268,41 @@ public class DataSeeder implements CommandLineRunner {
         });
     }
 
+    // ------------------------------------------------------------------
+    // Arabic translations for seeded English content
+    // ------------------------------------------------------------------
+
+    private static final Map<String, String> COMPANY_NAME_AR = Map.of(
+            "Delta Finishing Co.", "شركة الدلتا للتشطيبات",
+            "El-Delta Finishing Group", "مجموعة الدلتا للتشطيبات",
+            "Damietta Star Finishing", "دمياط ستار للتشطيبات",
+            "Nile Maintenance & Services", "النيل للصيانة والخدمات",
+            "Delta Prime Real Estate", "دلتا برايم للتطوير العقاري"
+    );
+
+    private static final Map<String, String> PROPERTY_TITLE_AR = Map.of(
+            "Sea View Apartment - Ras El Bar", "شقة بإطلالة بحرية - رأس البر",
+            "Modern Duplex in New Damietta", "دوبلكس مودرن في دمياط الجديدة",
+            "Family Villa in Damietta", "فيلا عائلية في دمياط",
+            "Studio in Toriel - Mansoura", "استوديو في توري - المنصورة",
+            "Ground Floor with Garden - Toriel", "الدور الأرضي مع حديقة - توري",
+            "Furnished Apartment - New Damietta Corniche", "شقة مفروشة - كورنيش دمياط الجديدة",
+            "Beach Villa - Ras El Bar", "فيلا شاطئ - رأس البر"
+    );
+
     private static Company company(User owner, CompanyType type, String name, String phone,
                                    String whatsapp, String email, double reputation) {
         Company company = new Company();
         company.setOwner(owner);
         company.setType(type);
         company.setName(name);
+        company.setNameAr(COMPANY_NAME_AR.getOrDefault(name, name));
         company.setLogoUrl("https://picsum.photos/seed/" + name.replaceAll("\\s+", "").toLowerCase() + "/200/200");
         company.setCoverUrl("https://picsum.photos/seed/" + name.replaceAll("\\s+", "").toLowerCase() + "cover/1200/400");
         company.setDescription(name + " provides trusted " + type.name().toLowerCase().replace('_', ' ')
                 + " services across the Nile Delta region.");
+        company.setDescriptionAr(COMPANY_NAME_AR.getOrDefault(name, name)
+                + " يقدم خدمات موثوقة في جميع أنحاء منطقة الدلتا.");
         company.setPhone(phone);
         company.setWhatsapp(whatsapp);
         company.setEmail(email);
@@ -1298,9 +1348,14 @@ public class DataSeeder implements CommandLineRunner {
         Property property = new Property();
         property.setOwner(owner);
         property.setTitle(title);
+        String titleAr = PROPERTY_TITLE_AR.getOrDefault(title, title);
+        property.setTitleAr(titleAr);
         property.setDescription(title + " in " + city.getName() + ". "
                 + "A well-located unit with excellent finishing, ready for immediate use. "
                 + "Close to services, schools and public transportation.");
+        property.setDescriptionAr(titleAr + " في " + city.getNameAr() + ". "
+                + "وحدة بموقع مميز وتشطيب سوبر لوكس وجاهزة للسكن الفوري. "
+                + "قريبة من الخدمات والمدارس ومواصلات النقل العام.");
         property.setPrice(new BigDecimal(price));
         property.setPurpose(purpose);
         property.setCategory(category);
@@ -1439,13 +1494,6 @@ public class DataSeeder implements CommandLineRunner {
         preference.setWantsNews(news);
         preference.setWantsDiscounts(discounts);
         return preference;
-    }
-
-    private static Follower follower(User user, Company company) {
-        Follower follower = new Follower();
-        follower.setUser(user);
-        follower.setCompany(company);
-        return follower;
     }
 
     private static Subscription subscription(UUID userId, UUID companyId, SubscriptionPlan plan,
@@ -1591,6 +1639,47 @@ public class DataSeeder implements CommandLineRunner {
 
     private static User admin(List<User> users) {
         return users.stream().filter(u -> u.getRole() == UserRole.ADMIN).findFirst().orElseThrow();
+    }
+
+    /**
+     * The plain {@link #seed} helpers skip rows that already exist, so content
+     * seeded before the bilingual columns were introduced would stay English-only
+     * forever. This runs on every startup and fills missing Arabic fields on
+     * EXISTING companies/properties from the translation maps. Never touches
+     * non-blank Arabic values (manual translations are preserved).
+     */
+    private void backfillArabicContent(List<Company> companies, List<Property> properties) {
+        int companiesFixed = 0;
+        for (Company c : companies) {
+            if (isBlank(c.getNameAr()) || isBlank(c.getDescriptionAr())) {
+                c.setNameAr(COMPANY_NAME_AR.getOrDefault(c.getName(), c.getName()));
+                c.setDescriptionAr(COMPANY_NAME_AR.getOrDefault(c.getName(), c.getName())
+                        + " يقدم خدمات موثوقة في جميع أنحاء منطقة الدلتا.");
+                companyRepository.save(c);
+                companiesFixed++;
+            }
+        }
+
+        int propertiesFixed = 0;
+        for (Property p : properties) {
+            if (isBlank(p.getTitleAr()) && PROPERTY_TITLE_AR.containsKey(p.getTitle())) {
+                String titleAr = PROPERTY_TITLE_AR.get(p.getTitle());
+                p.setTitleAr(titleAr);
+                if (isBlank(p.getDescriptionAr())) {
+                    String cityAr = p.getCity() != null ? p.getCity().getNameAr() : "";
+                    p.setDescriptionAr(titleAr + " في " + cityAr + ". "
+                            + "وحدة بموقع مميز وتشطيب سوبر لوكس وجاهزة للسكن الفوري. "
+                            + "قريبة من الخدمات والمدارس ومواصلات النقل العام.");
+                }
+                propertyRepository.save(p);
+                propertiesFixed++;
+            }
+        }
+        log.info("[seeder] Arabic backfill: {} companies, {} properties updated.", companiesFixed, propertiesFixed);
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.isBlank();
     }
 
     // ------------------------------------------------------------------
