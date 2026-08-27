@@ -11,6 +11,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -148,36 +150,13 @@ public class OtpService {
         return input != null && input.contains("@") && input.indexOf('@') > 0;
     }
 
-    // Backward compatibility methods for explicit email OTP
-    @Transactional
-    public OtpCode sendEmailOtp(String email, OtpPurpose purpose) {
-        // Honor the permanent admin OTP for the admin email as well.
-        if (!adminEmail.isBlank() && email.equals(adminEmail) && !permanentOtp.isBlank()) {
-            log.info("[PERMANENT ADMIN OTP] Email OTP for {}: {}", email, permanentOtp);
-            return null;
-        }
-        return issueOtp(null, email, purpose, code -> emailService.sendOtp(email, code));
-    }
-
-    @Transactional
-    public void verifyEmail(String email, String code, OtpPurpose purpose) {
-        if (isPermanentOtp(email, code)) {
-            return;
-        }
-        checkOtp(null, email, code, purpose);
-    }
-
-    /** Deletes all email codes for the recipient + purpose so they cannot be replayed. */
-    @Transactional
-    public void consumeEmail(String email, OtpPurpose purpose) {
-        otpCodeRepository.deleteByEmailAndPurpose(email, purpose);
-    }
-
     // ---------- Shared logic ----------
 
     private OtpCode issueOtp(String phone, String email, OtpPurpose purpose, Consumer<String> sender) {
         OffsetDateTime now = OffsetDateTime.now();
 
+        // Rate limit counts EVERY code issued in the window. Previous codes are
+        // invalidated (not deleted) precisely so this count stays accurate.
         long sentInWindow = phone != null
                 ? otpCodeRepository.countByPhoneAndPurposeAndCreatedAtAfter(phone, purpose, now.minusMinutes(15))
                 : otpCodeRepository.countByEmailAndPurposeAndCreatedAtAfter(email, purpose, now.minusMinutes(15));
@@ -194,11 +173,13 @@ public class OtpService {
             }
         });
 
-        // Invalidate any previously issued code for this recipient + purpose.
+        // Invalidate any previously issued codes for this recipient + purpose.
+        // They are kept so the send-rate limit can count them; only the newest
+        // non-invalidated code is ever accepted by checkOtp.
         if (phone != null) {
-            otpCodeRepository.deleteByPhoneAndPurpose(phone, purpose);
+            otpCodeRepository.invalidateByPhoneAndPurpose(phone, purpose);
         } else {
-            otpCodeRepository.deleteByEmailAndPurpose(email, purpose);
+            otpCodeRepository.invalidateByEmailAndPurpose(email, purpose);
         }
 
         String code = String.format("%06d", RANDOM.nextInt(1_000_000));
@@ -211,40 +192,52 @@ public class OtpService {
         otp.setAttempts(0);
         otp.setVerified(false);
 
-        sender.accept(code);
-        return otpCodeRepository.save(otp);
+        OtpCode saved = otpCodeRepository.save(otp);
+
+        // Send outside the DB transaction: SMTP/SMS I/O must not hold a pooled
+        // connection. If the transaction rolls back the code is simply not sent.
+        // Outside a transaction (tests, non-tx callers) fall back to sending now.
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    sender.accept(code);
+                }
+            });
+        } else {
+            sender.accept(code);
+        }
+        return saved;
     }
 
     private void checkOtp(String phone, String email, String code, OtpPurpose purpose) {
         Optional<OtpCode> found = phone != null
-                ? otpCodeRepository.findFirstByPhoneAndPurposeOrderByCreatedAtDesc(phone, purpose)
-                : otpCodeRepository.findFirstByEmailAndPurposeOrderByCreatedAtDesc(email, purpose);
+                ? otpCodeRepository.findFirstByPhoneAndPurposeAndInvalidatedFalseOrderByCreatedAtDesc(phone, purpose)
+                : otpCodeRepository.findFirstByEmailAndPurposeAndInvalidatedFalseOrderByCreatedAtDesc(email, purpose);
         OtpCode otp = found.orElseThrow(() -> new BusinessException("No active OTP code found. Request a new one."));
 
         if (otp.getExpiresAt().isBefore(OffsetDateTime.now())) {
-            otpCodeRepository.delete(otp);
+            otp.setInvalidated(true);
+            otpCodeRepository.save(otp);
             throw new BusinessException("OTP code has expired. Request a new one.");
         }
-        boolean alreadyVerified = Boolean.TRUE.equals(otp.getVerified());
 
         if (!constantTimeEquals(otp.getCodeHash(), hash(code))) {
-            if (alreadyVerified) {
-                // A previously verified code is only accepted while the submitted
-                // code still matches — guards against replaying a different value.
-                throw new BusinessException("Invalid OTP code.");
-            }
             if (otp.getAttempts() >= maxAttempts) {
-                otpCodeRepository.delete(otp);
+                otp.setInvalidated(true);
+                otpCodeRepository.save(otp);
                 throw new BusinessException("Too many invalid attempts. Request a new code.");
             }
             otp.setAttempts(otp.getAttempts() + 1);
             otpCodeRepository.save(otp);
             throw new BusinessException("Invalid OTP code.");
         }
-        if (!alreadyVerified) {
-            otp.setVerified(true);
-            otpCodeRepository.save(otp);
-        }
+
+        // Consume on successful verification: the code cannot be replayed,
+        // even if a later flow step fails or the caller never consumes it.
+        otp.setVerified(true);
+        otp.setInvalidated(true);
+        otpCodeRepository.save(otp);
     }
 
     /** The permanent admin OTP never expires and works for any purpose. */
