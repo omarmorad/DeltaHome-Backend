@@ -1,6 +1,8 @@
 package com.deltahomes.backend.service;
 
 import com.deltahomes.backend.dto.chat.ChatDtos;
+import com.deltahomes.backend.dto.chat.ChatDtos.ConversationResponse;
+import com.deltahomes.backend.dto.chat.ChatDtos.MessageResponse;
 import com.deltahomes.backend.dto.common.PaginatedResponse;
 import com.deltahomes.backend.dto.summary.ConversationSummary;
 import com.deltahomes.backend.dto.summary.MessageSummary;
@@ -14,6 +16,7 @@ import com.deltahomes.backend.repository.ConversationRepository;
 import com.deltahomes.backend.repository.MessageRepository;
 import com.deltahomes.backend.repository.UserRepository;
 import com.deltahomes.backend.util.PageUtils;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -37,14 +40,30 @@ public class ChatService {
         this.userRepository = userRepository;
     }
 
+    /**
+     * Finds or creates the 1:1 conversation between two users. The pair is
+     * normalized (lower UUID always stored as {@code userOne}) so both lookup
+     * directions hit the same row, and a DB unique constraint backs the
+     * check-then-insert against concurrent duplicates.
+     */
     @Transactional
     public Conversation getOrCreateConversation(User userOne, User userTwo) {
-        return conversationRepository.findByUserOneIdAndUserTwoId(userOne.getId(), userTwo.getId())
+        User first = normalizeFirst(userOne, userTwo);
+        User second = first.getId().equals(userOne.getId()) ? userTwo : userOne;
+
+        return conversationRepository.findByUserOneIdAndUserTwoId(first.getId(), second.getId())
                 .orElseGet(() -> {
-                    Conversation conversation = new Conversation();
-                    conversation.setUserOne(userOne);
-                    conversation.setUserTwo(userTwo);
-                    return conversationRepository.save(conversation);
+                    try {
+                        Conversation conversation = new Conversation();
+                        conversation.setUserOne(first);
+                        conversation.setUserTwo(second);
+                        return conversationRepository.saveAndFlush(conversation);
+                    } catch (DataIntegrityViolationException e) {
+                        // Lost a race against a concurrent create — reuse the winner.
+                        return conversationRepository
+                                .findByUserOneIdAndUserTwoId(first.getId(), second.getId())
+                                .orElseThrow(() -> e);
+                    }
                 });
     }
 
@@ -68,7 +87,7 @@ public class ChatService {
 
     /** Sends a message, verifying that the sender is a participant of the conversation. */
     @Transactional
-    public Message sendMessage(User sender, UUID conversationId, ChatDtos.CreateMessageRequest request) {
+    public MessageResponse sendMessage(User sender, UUID conversationId, ChatDtos.CreateMessageRequest request) {
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Conversation", conversationId));
         if (!isParticipant(conversation, sender)) {
@@ -92,15 +111,15 @@ public class ChatService {
 
         conversation.setLastMessagePreview(truncate(request.content(), 255));
         conversationRepository.save(conversation);
-        return saved;
+        return toMessageResponse(saved);
     }
 
     @Transactional(readOnly = true)
-    public Conversation getConversation(UUID conversationId, User user) {
+    public ConversationResponse getConversation(UUID conversationId, User user) {
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Conversation", conversationId));
         assertParticipant(conversation, user);
-        return conversation;
+        return toConversationResponse(conversation, user.getId());
     }
 
     /** Marks the conversation as read by the given participant. */
@@ -119,12 +138,15 @@ public class ChatService {
         conversationRepository.save(conversation);
     }
 
+    @Transactional(readOnly = true)
     public PaginatedResponse<ConversationSummary> indexConversations(User user, Pageable pageable) {
-        Page<ConversationSummary> page = conversationRepository.searchIndex(user.getId(), PageUtils.normalizeSort(pageable))
-            .map(this::toConversationSummary);
+        Page<ConversationSummary> page = conversationRepository.searchIndex(
+                user.getId(), PageUtils.normalizeSort(pageable))
+            .map(c -> toConversationSummary(c, user.getId()));
         return PaginatedResponse.from(page);
     }
 
+    @Transactional(readOnly = true)
     public PaginatedResponse<MessageSummary> getConversationMessages(UUID conversationId, User user,
                                                                      String q, Pageable pageable) {
         Conversation conversation = conversationRepository.findById(conversationId)
@@ -134,6 +156,20 @@ public class ChatService {
                 conversationId, q == null ? "" : q.trim(), PageUtils.normalizeSort(pageable))
             .map(this::toMessageSummary);
         return PaginatedResponse.from(page);
+    }
+
+    // ---------- Helpers ----------
+
+    /**
+     * Canonical ordering: the user with the lexicographically smaller UUID is
+     * stored as {@code userOne}, guaranteeing a single row per unordered pair.
+     */
+    private static User normalizeFirst(User a, User b) {
+        return a.getId().compareTo(b.getId()) <= 0 ? a : b;
+    }
+
+    private static User otherUserOf(Conversation c, UUID viewerId) {
+        return c.getUserOne().getId().equals(viewerId) ? c.getUserTwo() : c.getUserOne();
     }
 
     private static boolean isParticipant(Conversation conversation, User user) {
@@ -147,16 +183,48 @@ public class ChatService {
         }
     }
 
-    private ConversationSummary toConversationSummary(Conversation c) {
-        // Determine the other user based on which side is the current user
-        // Note: caller doesn't pass userId here, so we return both and let the client decide
+    private static boolean hasMarkedRead(Conversation c, UUID viewerId) {
+        return c.getUserOne().getId().equals(viewerId)
+                ? c.getLastSeenUserOne() != null
+                : c.getLastSeenUserTwo() != null;
+    }
+
+    private ConversationSummary toConversationSummary(Conversation c, UUID viewerId) {
+        User other = otherUserOf(c, viewerId);
         return new ConversationSummary() {
             @Override public UUID getId() { return c.getId(); }
             @Override public String getLastMessagePreview() { return c.getLastMessagePreview(); }
             @Override public java.time.OffsetDateTime getUpdatedAt() { return c.getUpdatedAt(); }
-            @Override public UUID getOtherUserId() { return c.getUserOne() != null ? c.getUserOne().getId() : null; }
-            @Override public String getOtherUserName() { return c.getUserOne() != null ? c.getUserOne().getName() : null; }
+            @Override public UUID getOtherUserId() { return other != null ? other.getId() : null; }
+            @Override public String getOtherUserName() { return other != null ? other.getName() : null; }
         };
+    }
+
+    private ConversationResponse toConversationResponse(Conversation c, UUID viewerId) {
+        User other = otherUserOf(c, viewerId);
+        return new ConversationResponse(
+                c.getId(),
+                c.getLastMessagePreview(),
+                c.getUpdatedAt(),
+                other != null ? new ConversationResponse.OtherUserInfo(
+                        other.getId(), other.getName(), other.getPhotoUrl()) : null,
+                hasMarkedRead(c, viewerId) ? viewerId : null,
+                c.getLastMessagePreview() != null && !hasMarkedRead(c, viewerId)
+        );
+    }
+
+    private MessageResponse toMessageResponse(Message m) {
+        return new MessageResponse(
+                m.getId(),
+                m.getConversation() != null ? m.getConversation().getId() : null,
+                m.getSender() != null ? m.getSender().getId() : null,
+                m.getSender() != null ? m.getSender().getName() : null,
+                m.getType(),
+                m.getTextBody(),
+                m.getMediaUrl(),
+                m.getPayload(),
+                m.getCreatedAt()
+        );
     }
 
     private MessageSummary toMessageSummary(Message m) {

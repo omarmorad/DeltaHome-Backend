@@ -27,6 +27,7 @@ public class CompanyService {
         this.companyRepository = companyRepository;
     }
 
+    @Transactional(readOnly = true)
     public PaginatedResponse<CompanySummary> index(String q, CompanyType type, Boolean verified,
                                                    Pageable pageable) {
         Page<CompanySummary> page = companyRepository.searchIndex(
@@ -62,9 +63,5 @@ public class CompanyService {
         company.setReputationScore(BigDecimal.ZERO);
         company.setPlan(SubscriptionTier.BASIC);
         return companyRepository.save(company);
-    }
-
-    public Page<Company> getVerifiedCompanies(Pageable pageable) {
-        return companyRepository.findByVerifiedTrue(pageable);
     }
 }

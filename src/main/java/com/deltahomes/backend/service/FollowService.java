@@ -46,8 +46,8 @@ public class FollowService {
         follower.setUser(user);
         follower.setCompany(company);
         followerRepository.save(follower);
-        company.setFollowersCount(company.getFollowersCount() + 1);
-        companyRepository.save(company);
+        // Atomic in-DB increment — safe against concurrent follows.
+        companyRepository.incrementFollowersCount(companyId);
         return follower;
     }
 
@@ -57,9 +57,8 @@ public class FollowService {
             throw new BusinessException("Not following this company");
         }
         followerRepository.deleteByUserIdAndCompanyId(user.getId(), companyId);
-        Company company = getCompany(companyId);
-        company.setFollowersCount(Math.max(0, company.getFollowersCount() - 1));
-        companyRepository.save(company);
+        // Atomic in-DB decrement, clamped at zero.
+        companyRepository.decrementFollowersCount(companyId);
     }
 
     public boolean isFollowing(User user, UUID companyId) {

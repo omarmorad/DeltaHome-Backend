@@ -58,15 +58,17 @@ public class AuthService {
 
     @Transactional
     public AuthDtos.OtpSendResponse sendEmailOtp(String email, OtpPurpose purpose) {
-        otpService.sendEmailOtp(normalizeEmail(email), purpose);
-        return new AuthDtos.OtpSendResponse(normalizeEmail(email), otpService.getExpiryMinutes(),
-                "OTP sent to " + maskEmail(email));
+        String normalized = normalizeEmail(email);
+        otpService.sendOtp(normalized, purpose);
+        return new AuthDtos.OtpSendResponse(normalized, otpService.getExpiryMinutes(),
+                "OTP sent to " + maskEmail(normalized));
     }
 
     @Transactional
     public AuthDtos.OtpVerifyResponse verifyEmailOtp(String email, String code, OtpPurpose purpose) {
-        otpService.verifyEmail(normalizeEmail(email), code, purpose);
-        return new AuthDtos.OtpVerifyResponse(normalizeEmail(email), true);
+        String normalized = normalizeEmail(email);
+        otpService.verify(normalized, code, purpose);
+        return new AuthDtos.OtpVerifyResponse(normalized, true);
     }
 
     // ---------- Email registration ----------
@@ -81,7 +83,7 @@ public class AuthService {
             throw new BusinessException("Admin accounts are provisioned by the platform");
         }
 
-        otpService.verifyEmail(email, request.otpCode(), OtpPurpose.REGISTRATION);
+        otpService.verify(email, request.otpCode(), OtpPurpose.REGISTRATION);
 
         User user = new User();
         user.setName(request.name().trim());
@@ -93,7 +95,7 @@ public class AuthService {
         user.setLastLoginAt(OffsetDateTime.now());
 
         User saved = userRepository.save(user);
-        otpService.consumeEmail(email, OtpPurpose.REGISTRATION);
+        otpService.consume(email, OtpPurpose.REGISTRATION);
         return buildAuthResponse(saved);
     }
 
@@ -101,13 +103,20 @@ public class AuthService {
 
     @Transactional
     public AuthDtos.AuthResponse loginWithEmail(AuthDtos.LoginEmailRequest request) {
-        User user = userRepository.findByEmail(normalizeEmail(request.email()))
-                .orElseThrow(() -> new BusinessException("Invalid credentials"));
+        String email = normalizeEmail(request.email());
+        Optional<User> found = userRepository.findByEmail(email);
+        if (found.isEmpty()) {
+            // Burn a BCrypt round so that "unknown email" and "wrong password"
+            // take the same time (prevents account enumeration via timing).
+            passwordEncoder.matches(request.password(), DUMMY_HASH);
+            throw new BusinessException("Invalid credentials");
+        }
+        User user = found.get();
         ensureActive(user);
 
         try {
             authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(normalizeEmail(request.email()), request.password()));
+                    new UsernamePasswordAuthenticationToken(email, request.password()));
         } catch (AuthenticationException e) {
             throw new BusinessException("Invalid credentials");
         }
@@ -123,10 +132,10 @@ public class AuthService {
                 .orElseThrow(() -> new BusinessException("No account found for this email. Please register first."));
         ensureActive(user);
 
-        otpService.verifyEmail(normalized, otpCode, OtpPurpose.LOGIN);
+        otpService.verify(normalized, otpCode, OtpPurpose.LOGIN);
 
         touchLastLogin(user);
-        otpService.consumeEmail(normalized, OtpPurpose.LOGIN);
+        otpService.consume(normalized, OtpPurpose.LOGIN);
         return buildAuthResponse(user);
     }
 
@@ -137,10 +146,11 @@ public class AuthService {
         String normalized = normalizeEmail(email);
         User user = userRepository.findByEmail(normalized)
                 .orElseThrow(() -> new BusinessException("No account found for this email"));
-        otpService.verifyEmail(normalized, otpCode, OtpPurpose.PASSWORD_RESET);
+        otpService.verify(normalized, otpCode, OtpPurpose.PASSWORD_RESET);
         user.setPasswordHash(passwordEncoder.encode(newPassword));
+        revokeRefreshToken(user);
         userRepository.save(user);
-        otpService.consumeEmail(normalized, OtpPurpose.PASSWORD_RESET);
+        otpService.consume(normalized, OtpPurpose.PASSWORD_RESET);
     }
 
     // ---------- Registration ----------
@@ -204,15 +214,47 @@ public class AuthService {
 
     // ---------- Tokens ----------
 
+    /**
+     * Refresh-token rotation: the presented token must be a valid, unexpired
+     * refresh token whose jti matches the one stored for the user. A mismatch
+     * means the token was already rotated (or revoked) — treated as theft and
+     * rejected. On success a brand-new access + refresh pair is issued and the
+     * stored jti is replaced.
+     */
+    @Transactional
     public AuthDtos.AuthResponse refresh(String refreshToken) {
         if (!jwtService.isRefreshToken(refreshToken)) {
             throw new BusinessException("Invalid or expired refresh token");
         }
-        String phone = jwtService.extractPhone(refreshToken);
-        User user = findByPhoneOrEmail(phone)
+        String jti = jwtService.extractJti(refreshToken);
+        String identifier = jwtService.extractPhone(refreshToken);
+        User user = findByPhoneOrEmail(identifier)
                 .orElseThrow(() -> new BusinessException("Invalid or expired refresh token"));
         ensureActive(user);
-        return buildAuthResponse(user);
+
+        if (jti == null || !jti.equals(user.getRefreshTokenId())) {
+            // Rotated/revoked token reuse — reject. The stored jti is kept so
+            // the legitimate session keeps working; repeated reuse of the old
+            // token cannot succeed.
+            throw new BusinessException("Invalid or expired refresh token");
+        }
+
+        AuthDtos.AuthResponse response = buildAuthResponse(user);
+        userRepository.save(user); // persist rotated jti set by buildAuthResponse
+        return response;
+    }
+
+    /**
+     * Server-side logout: clears the stored refresh-token jti so the current
+     * refresh token can no longer be exchanged. Access tokens remain valid
+     * until they expire (stateless).
+     */
+    @Transactional
+    public void logout(String identifier) {
+        findByPhoneOrEmail(identifier).ifPresent(user -> {
+            revokeRefreshToken(user);
+            userRepository.save(user);
+        });
     }
 
     // ---------- Profile & password ----------
@@ -224,27 +266,34 @@ public class AuthService {
     }
 
     @Transactional
-    public void changePassword(String phone, String currentPassword, String newPassword) {
-        User user = userRepository.findByPhone(phone)
+    public void changePassword(String identifier, String currentPassword, String newPassword) {
+        validateNewPassword(newPassword);
+        User user = findByPhoneOrEmail(identifier)
                 .orElseThrow(() -> new BusinessException("User not found"));
         if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
             throw new BusinessException("Current password is incorrect");
         }
         user.setPasswordHash(passwordEncoder.encode(newPassword));
+        revokeRefreshToken(user);
         userRepository.save(user);
     }
 
     @Transactional
     public void resetPassword(String phone, String otpCode, String newPassword) {
+        validateNewPassword(newPassword);
         User user = userRepository.findByPhone(phone)
                 .orElseThrow(() -> new BusinessException("No account found for this phone"));
         otpService.verify(phone, otpCode, OtpPurpose.PASSWORD_RESET);
         user.setPasswordHash(passwordEncoder.encode(newPassword));
+        revokeRefreshToken(user);
         userRepository.save(user);
         otpService.consume(phone, OtpPurpose.PASSWORD_RESET);
     }
 
     // ---------- Helpers ----------
+
+    /** Pre-computed BCrypt hash of an unguessable random value — used only to equalize login timing. */
+    private static final String DUMMY_HASH = "$2a$10$N9qo8uLOickgx2ZMRZoMye.IjPeGqBQKzE1v0mR91fWtCwQOcFkOa";
 
     private void ensureActive(User user) {
         if (user.getStatus() != UserStatus.ACTIVE) {
@@ -252,15 +301,28 @@ public class AuthService {
         }
     }
 
+    private void validateNewPassword(String newPassword) {
+        if (newPassword == null || newPassword.length() < 6 || newPassword.length() > 72) {
+            throw new BusinessException(AuthDtos.PASSWORD_MESSAGE);
+        }
+    }
+
+    private void revokeRefreshToken(User user) {
+        user.setRefreshTokenId(null);
+    }
+
     private void touchLastLogin(User user) {
         user.setLastLoginAt(OffsetDateTime.now());
         userRepository.save(user);
     }
 
+    /** Issues the token pair and stores the new refresh jti on the user (caller must save within its transaction). */
     private AuthDtos.AuthResponse buildAuthResponse(User user) {
+        String refreshToken = jwtService.generateRefreshToken(user);
+        user.setRefreshTokenId(jwtService.extractJti(refreshToken));
         return new AuthDtos.AuthResponse(
                 jwtService.generateAccessToken(user),
-                jwtService.generateRefreshToken(user),
+                refreshToken,
                 "Bearer",
                 jwtService.getAccessTokenExpirationSeconds(),
                 AuthDtos.UserResponse.from(user)
