@@ -35,4 +35,37 @@ public final class ChatDtos {
             String payload
     ) {
     }
+
+    // ---------- Responses ----------
+
+    /**
+     * Conversation projection. {@code otherUser} is resolved relative to the
+     * authenticated viewer (never the viewer themselves).
+     */
+    public record ConversationResponse(
+            UUID id,
+            String lastMessagePreview,
+            java.time.OffsetDateTime updatedAt,
+            OtherUserInfo otherUser,
+            UUID lastSeenByViewerId,
+            boolean unreadForViewer
+    ) {
+
+        public record OtherUserInfo(UUID id, String name, String photoUrl) {
+        }
+    }
+
+    /** Message projection — never exposes the raw entity. */
+    public record MessageResponse(
+            UUID id,
+            UUID conversationId,
+            UUID senderId,
+            String senderName,
+            MessageType type,
+            String textBody,
+            String mediaUrl,
+            String payload,
+            java.time.OffsetDateTime createdAt
+    ) {
+    }
 }

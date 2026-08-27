@@ -26,8 +26,16 @@ public class Property extends BaseEntity {
     @Column(name = "title", length = 200, nullable = false)
     private String title;
 
+    /** Arabic title — optional; responses fall back to {@link #title} when empty. */
+    @Column(name = "title_ar", length = 200)
+    private String titleAr;
+
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
+
+    /** Arabic description — optional; responses fall back to {@link #description} when empty. */
+    @Column(name = "description_ar", columnDefinition = "TEXT")
+    private String descriptionAr;
 
     @Column(name = "price", precision = 12, scale = 2, nullable = false)
     private BigDecimal price;
