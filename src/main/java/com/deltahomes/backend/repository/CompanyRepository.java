@@ -6,6 +6,7 @@ import com.deltahomes.backend.entity.enums.CompanyType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -16,6 +17,19 @@ import java.util.UUID;
 public interface CompanyRepository extends JpaRepository<Company, UUID> {
     Page<Company> findByType(CompanyType type, Pageable pageable);
     Page<Company> findByVerifiedTrue(Pageable pageable);
+
+    /**
+     * Atomic follower-counter updates: read-modify-write via entity fields
+     * loses updates when two users follow at the same time.
+     */
+    @Modifying
+    @Query("UPDATE Company c SET c.followersCount = c.followersCount + 1 WHERE c.id = :id")
+    void incrementFollowersCount(@Param("id") UUID id);
+
+    @Modifying
+    @Query(value = "UPDATE companies SET followers_count = GREATEST(followers_count - 1, 0) WHERE id = :id",
+            nativeQuery = true)
+    void decrementFollowersCount(@Param("id") UUID id);
 
     @Query(value = """
             SELECT c.id, c.name, c.type, c.logo_url AS logoUrl, c.cover_url AS coverUrl,

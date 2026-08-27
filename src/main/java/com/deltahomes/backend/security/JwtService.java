@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.UUID;
 import java.util.function.Function;
 
 /**
@@ -49,24 +50,35 @@ public class JwtService {
     }
 
     public String generateAccessToken(User user) {
-        return generateToken(user, TYPE_ACCESS, accessExpirationMs);
-    }
-
-    public String generateRefreshToken(User user) {
-        return generateToken(user, TYPE_REFRESH, refreshExpirationMs);
-    }
-
-    private String generateToken(User user, String type, long expirationMs) {
-        String subject = user.getPhone() != null ? user.getPhone() : user.getEmail();
         return Jwts.builder()
-                .subject(subject)
+                .subject(subjectOf(user))
                 .claim("userId", user.getId().toString())
                 .claim("role", user.getRole().name())
-                .claim(CLAIM_TYPE, type)
+                .claim(CLAIM_TYPE, TYPE_ACCESS)
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + expirationMs))
+                .expiration(new Date(System.currentTimeMillis() + accessExpirationMs))
                 .signWith(signingKey)
                 .compact();
+    }
+
+    /**
+     * Issues a refresh token carrying a unique {@code jti}. Callers persist the
+     * jti per user so that rotation can detect reuse of an already-rotated
+     * token (theft signal) and logout/password-reset can revoke it.
+     */
+    public String generateRefreshToken(User user) {
+        return Jwts.builder()
+                .id(UUID.randomUUID().toString())
+                .subject(subjectOf(user))
+                .claim(CLAIM_TYPE, TYPE_REFRESH)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + refreshExpirationMs))
+                .signWith(signingKey)
+                .compact();
+    }
+
+    private static String subjectOf(User user) {
+        return user.getPhone() != null ? user.getPhone() : user.getEmail();
     }
 
     public long getAccessTokenExpirationSeconds() {
@@ -75,6 +87,11 @@ public class JwtService {
 
     public String extractPhone(String token) {
         return extractClaim(token, Claims::getSubject);
+    }
+
+    /** Extracts the {@code jti} claim (refresh-token identity used for rotation/revocation). */
+    public String extractJti(String token) {
+        return extractClaim(token, Claims::getId);
     }
 
     private <T> T extractClaim(String token, Function<Claims, T> resolver) {
