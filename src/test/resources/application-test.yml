@@ -1,0 +1,19 @@
+spring:
+  mail:
+    host: ""          # blank host => EmailService logs OTPs instead of sending
+  flyway:
+    enabled: true
+
+app:
+  seed:
+    enabled: false
+  admin:
+    phone: "01000000000"
+    name: "Test Admin"
+    email: "admin@test.local"
+    password: "test-admin-password"
+    permanent-otp: ""
+
+logging:
+  level:
+    com.deltahomes: INFO
