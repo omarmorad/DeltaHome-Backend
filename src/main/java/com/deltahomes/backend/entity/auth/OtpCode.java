@@ -44,4 +44,13 @@ public class OtpCode extends BaseEntity {
 
     @Column(name = "verified", nullable = false)
     private Boolean verified = false;
+
+    /**
+     * True when a newer code has been issued for the same recipient + purpose.
+     * Invalidated codes are kept (not deleted) so that send-rate limiting can
+     * count every issue within the rate-limit window. Only the latest
+     * non-invalidated code is ever accepted for verification.
+     */
+    @Column(name = "invalidated", nullable = false)
+    private Boolean invalidated = false;
 }

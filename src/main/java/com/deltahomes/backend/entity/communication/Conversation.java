@@ -11,7 +11,10 @@ import java.util.UUID;
 @Getter
 @Setter
 @Entity
-@Table(name = "conversations")
+@Table(name = "conversations",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uq_conversation_user_pair",
+                columnNames = {"user_one_id", "user_two_id"}))
 public class Conversation extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)

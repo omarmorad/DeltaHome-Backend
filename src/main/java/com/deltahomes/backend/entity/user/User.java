@@ -50,4 +50,13 @@ public class User extends BaseEntity {
 
     @Column(name = "last_login_at")
     private OffsetDateTime lastLoginAt;
+
+    /**
+     * jti of the currently active refresh token. Set on every login and rotated
+     * on every /refresh; a presented refresh token whose jti does not match is
+     * rejected (reuse of a rotated token signals theft). Cleared on logout and
+     * password change/reset so outstanding refresh tokens stop working.
+     */
+    @Column(name = "refresh_token_id", length = 64)
+    private String refreshTokenId;
 }

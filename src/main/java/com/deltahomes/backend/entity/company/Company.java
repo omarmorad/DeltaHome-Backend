@@ -29,6 +29,10 @@ public class Company extends BaseEntity {
     @Column(name = "name", length = 200, nullable = false)
     private String name;
 
+    /** Arabic name — optional; localized responses fall back to {@link #name}. */
+    @Column(name = "name_ar", length = 200)
+    private String nameAr;
+
     @Column(name = "logo_url", length = 255)
     private String logoUrl;
 
@@ -37,6 +41,10 @@ public class Company extends BaseEntity {
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
+
+    /** Arabic description — optional; localized responses fall back to {@link #description}. */
+    @Column(name = "description_ar", columnDefinition = "TEXT")
+    private String descriptionAr;
 
     @Column(name = "phone", length = 20)
     private String phone;
