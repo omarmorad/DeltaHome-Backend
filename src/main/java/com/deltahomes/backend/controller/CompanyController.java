@@ -1,6 +1,6 @@
 package com.deltahomes.backend.controller;
 
-import com.deltahomes.backend.dto.common.PaginatedResponse;
+import com.deltahomes.backend.dto.common.ApiResponse;
 import com.deltahomes.backend.dto.company.CompanyDtos;
 import com.deltahomes.backend.dto.social.SocialDtos;
 import com.deltahomes.backend.dto.summary.CompanySummary;
@@ -8,10 +8,9 @@ import com.deltahomes.backend.entity.Follower;
 import com.deltahomes.backend.entity.company.Company;
 import com.deltahomes.backend.entity.enums.CompanyType;
 import com.deltahomes.backend.entity.user.User;
-import com.deltahomes.backend.exception.BusinessException;
-import com.deltahomes.backend.repository.UserRepository;
 import com.deltahomes.backend.service.CompanyService;
 import com.deltahomes.backend.service.FollowService;
+import com.deltahomes.backend.service.UserContext;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -30,49 +29,49 @@ public class CompanyController {
 
     private final CompanyService companyService;
     private final FollowService followService;
-    private final UserRepository userRepository;
+    private final UserContext userContext;
 
     public CompanyController(CompanyService companyService,
                              FollowService followService,
-                             UserRepository userRepository) {
+                             UserContext userContext) {
         this.companyService = companyService;
         this.followService = followService;
-        this.userRepository = userRepository;
+        this.userContext = userContext;
     }
 
     @GetMapping
-    public ResponseEntity<PaginatedResponse<CompanySummary>> index(
+    public ResponseEntity<ApiResponse<java.util.List<CompanySummary>>> index(
             @RequestParam(required = false) String q,
             @RequestParam(required = false) CompanyType type,
             Pageable pageable) {
-        return ResponseEntity.ok(companyService.index(q, type, true, pageable));
+        return ResponseEntity.ok(ApiResponse.page(companyService.index(q, type, true, pageable)));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Company> getCompany(@PathVariable UUID id) {
-        return ResponseEntity.ok(companyService.getCompanyById(id));
+    public ResponseEntity<ApiResponse<Company>> getCompany(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok(companyService.getCompanyById(id)));
     }
 
     @GetMapping("/followed")
-    public ResponseEntity<List<SocialDtos.CompanySummaryResponse>> getFollowedCompanies(
+    public ResponseEntity<ApiResponse<List<SocialDtos.CompanySummaryResponse>>> getFollowedCompanies(
             @AuthenticationPrincipal UserDetails principal) {
-        return ResponseEntity.ok(followService.getFollowedCompanies(currentUser(principal)));
+        return ResponseEntity.ok(ApiResponse.list(followService.getFollowedCompanies(currentUser(principal))));
     }
 
     @PostMapping
-    public ResponseEntity<Company> createCompany(@AuthenticationPrincipal UserDetails principal,
+    public ResponseEntity<ApiResponse<Company>> createCompany(@AuthenticationPrincipal UserDetails principal,
                                                  @Valid @RequestBody CompanyDtos.CreateCompanyRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(companyService.createCompany(currentUser(principal), request));
+                .body(ApiResponse.ok(companyService.createCompany(currentUser(principal), request)));
     }
 
     @PostMapping("/{id}/follow")
-    public ResponseEntity<SocialDtos.FollowResponse> followCompany(
+    public ResponseEntity<ApiResponse<SocialDtos.FollowResponse>> followCompany(
             @AuthenticationPrincipal UserDetails principal,
             @PathVariable UUID id) {
         Follower follower = followService.follow(currentUser(principal), id);
-        return ResponseEntity.ok(new SocialDtos.FollowResponse(
-                id, follower.getCompany().getName(), true));
+        return ResponseEntity.ok(ApiResponse.ok(new SocialDtos.FollowResponse(
+                id, follower.getCompany().getName(), true)));
     }
 
     @DeleteMapping("/{id}/follow")
@@ -83,15 +82,13 @@ public class CompanyController {
     }
 
     @GetMapping("/{id}/is-following")
-    public ResponseEntity<Map<String, Boolean>> isFollowing(@AuthenticationPrincipal UserDetails principal,
-                                                            @PathVariable UUID id) {
-        return ResponseEntity.ok(Map.of("following",
-                followService.isFollowing(currentUser(principal), id)));
+    public ResponseEntity<ApiResponse<Map<String, Boolean>>> isFollowing(@AuthenticationPrincipal UserDetails principal,
+                                                                         @PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok(Map.of("following",
+                followService.isFollowing(currentUser(principal), id))));
     }
 
     private User currentUser(UserDetails principal) {
-        return userRepository.findByPhone(principal.getUsername())
-                .or(() -> userRepository.findByEmail(principal.getUsername()))
-                .orElseThrow(() -> new BusinessException("User not found"));
+        return userContext.currentUser(principal);
     }
 }

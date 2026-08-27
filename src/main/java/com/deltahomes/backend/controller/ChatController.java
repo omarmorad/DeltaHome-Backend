@@ -1,12 +1,9 @@
 package com.deltahomes.backend.controller;
 
-import com.deltahomes.backend.dto.auth.AuthDtos;
 import com.deltahomes.backend.dto.chat.ChatDtos;
-import com.deltahomes.backend.dto.common.PaginatedResponse;
-import com.deltahomes.backend.dto.summary.ConversationSummary;
+import com.deltahomes.backend.dto.common.ApiResponse;
 import com.deltahomes.backend.dto.summary.MessageSummary;
 import com.deltahomes.backend.entity.communication.Conversation;
-import com.deltahomes.backend.entity.communication.Message;
 import com.deltahomes.backend.entity.user.User;
 import com.deltahomes.backend.service.ChatService;
 import com.deltahomes.backend.service.UserContext;
@@ -19,6 +16,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -38,56 +36,57 @@ public class ChatController {
     }
 
     @GetMapping("/conversations")
-    public ResponseEntity<PaginatedResponse<ConversationSummary>> index(
+    public ResponseEntity<ApiResponse<List<com.deltahomes.backend.dto.summary.ConversationSummary>>> index(
             @AuthenticationPrincipal UserDetails principal,
             @PageableDefault(size = 20) Pageable pageable) {
         User user = userContext.currentUser(principal);
-        return ResponseEntity.ok(chatService.indexConversations(user, pageable));
+        return ResponseEntity.ok(ApiResponse.page(chatService.indexConversations(user, pageable)));
     }
 
     @PostMapping("/conversations")
-    public ResponseEntity<Conversation> createConversation(
+    public ResponseEntity<ApiResponse<ChatDtos.ConversationResponse>> createConversation(
             @AuthenticationPrincipal UserDetails principal,
             @Valid @RequestBody ChatDtos.CreateConversationRequest request) {
         User user = userContext.currentUser(principal);
+        Conversation conversation = chatService.createConversation(user, request.participantIds());
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(chatService.createConversation(user, request.participantIds()));
+                .body(ApiResponse.ok(chatService.getConversation(conversation.getId(), user)));
     }
 
     @GetMapping("/conversations/{id}")
-    public ResponseEntity<Conversation> getConversation(
+    public ResponseEntity<ApiResponse<ChatDtos.ConversationResponse>> getConversation(
             @AuthenticationPrincipal UserDetails principal,
             @PathVariable UUID id) {
         User user = userContext.currentUser(principal);
-        return ResponseEntity.ok(chatService.getConversation(id, user));
+        return ResponseEntity.ok(ApiResponse.ok(chatService.getConversation(id, user)));
     }
 
     @GetMapping("/conversations/{id}/messages")
-    public ResponseEntity<PaginatedResponse<MessageSummary>> getMessages(
+    public ResponseEntity<ApiResponse<List<MessageSummary>>> getMessages(
             @AuthenticationPrincipal UserDetails principal,
             @PathVariable UUID id,
             @RequestParam(defaultValue = "") String q,
             @PageableDefault(size = 50) Pageable pageable) {
         User user = userContext.currentUser(principal);
-        return ResponseEntity.ok(chatService.getConversationMessages(id, user, q, pageable));
+        return ResponseEntity.ok(ApiResponse.page(chatService.getConversationMessages(id, user, q, pageable)));
     }
 
     @PostMapping("/conversations/{id}/messages")
-    public ResponseEntity<Message> sendMessage(
+    public ResponseEntity<ApiResponse<ChatDtos.MessageResponse>> sendMessage(
             @AuthenticationPrincipal UserDetails principal,
             @PathVariable UUID id,
             @Valid @RequestBody ChatDtos.CreateMessageRequest request) {
         User user = userContext.currentUser(principal);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(chatService.sendMessage(user, id, request));
+                .body(ApiResponse.ok(chatService.sendMessage(user, id, request)));
     }
 
     @PostMapping("/conversations/{id}/read")
-    public ResponseEntity<AuthDtos.MessageResponse> markRead(
+    public ResponseEntity<ApiResponse<Void>> markRead(
             @AuthenticationPrincipal UserDetails principal,
             @PathVariable UUID id) {
         User user = userContext.currentUser(principal);
         chatService.markRead(user, id);
-        return ResponseEntity.ok(new AuthDtos.MessageResponse("Conversation marked as read"));
+        return ResponseEntity.ok(ApiResponse.message("Conversation marked as read"));
     }
 }

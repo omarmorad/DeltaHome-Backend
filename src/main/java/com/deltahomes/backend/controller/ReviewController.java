@@ -1,6 +1,6 @@
 package com.deltahomes.backend.controller;
 
-import com.deltahomes.backend.dto.common.PaginatedResponse;
+import com.deltahomes.backend.dto.common.ApiResponse;
 import com.deltahomes.backend.dto.summary.ReviewAggregate;
 import com.deltahomes.backend.dto.summary.ReviewSummary;
 import com.deltahomes.backend.entity.Review;
@@ -16,6 +16,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -31,26 +32,27 @@ public class ReviewController {
     }
 
     @GetMapping
-    public ResponseEntity<PaginatedResponse<ReviewSummary>> index(
+    public ResponseEntity<ApiResponse<List<ReviewSummary>>> index(
             @RequestParam(defaultValue = "") String q,
             @RequestParam(required = false) EntityType entityType,
             @RequestParam(required = false) UUID entityId,
             @RequestParam(required = false) Integer minRating,
             @PageableDefault(size = 20) Pageable pageable) {
-        return ResponseEntity.ok(reviewService.index(q, entityType, entityId, minRating, pageable));
+        return ResponseEntity.ok(ApiResponse.page(
+                reviewService.index(q, entityType, entityId, minRating, pageable)));
     }
 
     @GetMapping("/summary/{entityType}/{entityId}")
-    public ResponseEntity<ReviewAggregate> getSummary(@PathVariable EntityType entityType,
-                                                      @PathVariable UUID entityId) {
-        return ResponseEntity.ok(reviewService.getAggregate(entityType, entityId));
+    public ResponseEntity<ApiResponse<ReviewAggregate>> getSummary(@PathVariable EntityType entityType,
+                                                                   @PathVariable UUID entityId) {
+        return ResponseEntity.ok(ApiResponse.ok(reviewService.getAggregate(entityType, entityId)));
     }
 
     @PostMapping
-    public ResponseEntity<Review> createReview(@AuthenticationPrincipal UserDetails principal,
-                                               @RequestBody Review review) {
+    public ResponseEntity<ApiResponse<Review>> createReview(@AuthenticationPrincipal UserDetails principal,
+                                                            @RequestBody Review review) {
         User reviewer = userContext.currentUser(principal);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(reviewService.createReview(reviewer, review));
+                .body(ApiResponse.ok(reviewService.createReview(reviewer, review)));
     }
 }

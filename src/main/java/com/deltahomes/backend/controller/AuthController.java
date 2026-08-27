@@ -1,6 +1,7 @@
 package com.deltahomes.backend.controller;
 
 import com.deltahomes.backend.dto.auth.AuthDtos;
+import com.deltahomes.backend.dto.common.ApiResponse;
 import com.deltahomes.backend.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -22,108 +23,112 @@ public class AuthController {
     // ---------- OTP ----------
 
     @PostMapping("/otp/send")
-    public ResponseEntity<AuthDtos.OtpSendResponse> sendOtp(
+    public ResponseEntity<ApiResponse<AuthDtos.OtpSendResponse>> sendOtp(
             @Valid @RequestBody AuthDtos.SendOtpRequest request) {
-        return ResponseEntity.ok(authService.sendOtp(request.phone(), request.purpose()));
+        return ResponseEntity.ok(ApiResponse.ok(authService.sendOtp(request.phone(), request.purpose())));
     }
 
     @PostMapping("/otp/verify")
-    public ResponseEntity<AuthDtos.OtpVerifyResponse> verifyOtp(
+    public ResponseEntity<ApiResponse<AuthDtos.OtpVerifyResponse>> verifyOtp(
             @Valid @RequestBody AuthDtos.VerifyOtpRequest request) {
-        return ResponseEntity.ok(authService.verifyOtp(request.phone(), request.code(), request.purpose()));
+        return ResponseEntity.ok(ApiResponse.ok(authService.verifyOtp(request.phone(), request.code(), request.purpose())));
     }
 
     @PostMapping("/otp/send-email")
-    public ResponseEntity<AuthDtos.OtpSendResponse> sendEmailOtp(
+    public ResponseEntity<ApiResponse<AuthDtos.OtpSendResponse>> sendEmailOtp(
             @Valid @RequestBody AuthDtos.SendEmailOtpRequest request) {
-        return ResponseEntity.ok(authService.sendEmailOtp(request.email(), request.purpose()));
+        return ResponseEntity.ok(ApiResponse.ok(authService.sendEmailOtp(request.email(), request.purpose())));
     }
 
     @PostMapping("/otp/verify-email")
-    public ResponseEntity<AuthDtos.OtpVerifyResponse> verifyEmailOtp(
+    public ResponseEntity<ApiResponse<AuthDtos.OtpVerifyResponse>> verifyEmailOtp(
             @Valid @RequestBody AuthDtos.VerifyEmailOtpRequest request) {
-        return ResponseEntity.ok(authService.verifyEmailOtp(request.email(), request.code(), request.purpose()));
+        return ResponseEntity.ok(ApiResponse.ok(authService.verifyEmailOtp(request.email(), request.code(), request.purpose())));
     }
 
     // ---------- Registration & login ----------
 
     @PostMapping("/register")
-    public ResponseEntity<AuthDtos.AuthResponse> register(
+    public ResponseEntity<ApiResponse<AuthDtos.AuthResponse>> register(
             @Valid @RequestBody AuthDtos.RegisterRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(request));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.ok(authService.register(request)));
     }
 
     @PostMapping("/register-email")
-    public ResponseEntity<AuthDtos.AuthResponse> registerWithEmail(
+    public ResponseEntity<ApiResponse<AuthDtos.AuthResponse>> registerWithEmail(
             @Valid @RequestBody AuthDtos.RegisterEmailRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(authService.registerWithEmail(request));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.ok(authService.registerWithEmail(request)));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthDtos.AuthResponse> login(
+    public ResponseEntity<ApiResponse<AuthDtos.AuthResponse>> login(
             @Valid @RequestBody AuthDtos.LoginRequest request) {
-        return ResponseEntity.ok(authService.login(request));
+        return ResponseEntity.ok(ApiResponse.ok(authService.login(request)));
     }
 
     @PostMapping("/login/email")
-    public ResponseEntity<AuthDtos.AuthResponse> loginWithEmail(
+    public ResponseEntity<ApiResponse<AuthDtos.AuthResponse>> loginWithEmail(
             @Valid @RequestBody AuthDtos.LoginEmailRequest request) {
-        return ResponseEntity.ok(authService.loginWithEmail(request));
+        return ResponseEntity.ok(ApiResponse.ok(authService.loginWithEmail(request)));
     }
 
     @PostMapping("/login/otp")
-    public ResponseEntity<AuthDtos.AuthResponse> loginWithOtp(
+    public ResponseEntity<ApiResponse<AuthDtos.AuthResponse>> loginWithOtp(
             @Valid @RequestBody AuthDtos.LoginWithOtpRequest request) {
-        return ResponseEntity.ok(authService.loginWithOtp(request.phone(), request.otpCode()));
+        return ResponseEntity.ok(ApiResponse.ok(authService.loginWithOtp(request.phone(), request.otpCode())));
     }
 
     @PostMapping("/login/otp/email")
-    public ResponseEntity<AuthDtos.AuthResponse> loginWithEmailOtp(
+    public ResponseEntity<ApiResponse<AuthDtos.AuthResponse>> loginWithEmailOtp(
             @Valid @RequestBody AuthDtos.LoginWithEmailOtpRequest request) {
-        return ResponseEntity.ok(authService.loginWithEmailOtp(request.email(), request.otpCode()));
+        return ResponseEntity.ok(ApiResponse.ok(authService.loginWithEmailOtp(request.email(), request.otpCode())));
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<AuthDtos.AuthResponse> refresh(
+    public ResponseEntity<ApiResponse<AuthDtos.AuthResponse>> refresh(
             @Valid @RequestBody AuthDtos.RefreshTokenRequest request) {
-        return ResponseEntity.ok(authService.refresh(request.refreshToken()));
+        return ResponseEntity.ok(ApiResponse.ok(authService.refresh(request.refreshToken())));
     }
 
     // ---------- Profile ----------
 
     @GetMapping("/me")
-    public ResponseEntity<AuthDtos.UserResponse> me(@AuthenticationPrincipal UserDetails principal) {
-        return ResponseEntity.ok(authService.me(principal.getUsername()));
+    public ResponseEntity<ApiResponse<AuthDtos.UserResponse>> me(@AuthenticationPrincipal UserDetails principal) {
+        return ResponseEntity.ok(ApiResponse.ok(authService.me(principal.getUsername())));
     }
 
     // ---------- Password ----------
 
     @PutMapping("/password")
-    public ResponseEntity<AuthDtos.MessageResponse> changePassword(
+    public ResponseEntity<ApiResponse<Void>> changePassword(
             @AuthenticationPrincipal UserDetails principal,
             @Valid @RequestBody AuthDtos.ChangePasswordRequest request) {
         authService.changePassword(principal.getUsername(), request.currentPassword(), request.newPassword());
-        return ResponseEntity.ok(new AuthDtos.MessageResponse("Password changed successfully"));
+        return ResponseEntity.ok(ApiResponse.message("Password changed successfully"));
     }
 
     @PostMapping("/password/reset")
-    public ResponseEntity<AuthDtos.MessageResponse> resetPassword(
+    public ResponseEntity<ApiResponse<Void>> resetPassword(
             @Valid @RequestBody AuthDtos.ResetPasswordRequest request) {
         authService.resetPassword(request.phone(), request.otpCode(), request.newPassword());
-        return ResponseEntity.ok(new AuthDtos.MessageResponse("Password reset successfully"));
+        return ResponseEntity.ok(ApiResponse.message("Password reset successfully"));
     }
 
     @PostMapping("/password/reset/email")
-    public ResponseEntity<AuthDtos.MessageResponse> resetPasswordByEmail(
+    public ResponseEntity<ApiResponse<Void>> resetPasswordByEmail(
             @Valid @RequestBody AuthDtos.ResetPasswordEmailRequest request) {
         authService.resetPasswordByEmail(request.email(), request.otpCode(), request.newPassword());
-        return ResponseEntity.ok(new AuthDtos.MessageResponse("Password reset successfully"));
+        return ResponseEntity.ok(ApiResponse.message("Password reset successfully"));
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<AuthDtos.MessageResponse> logout() {
-        // Stateless JWT: the client simply discards the tokens.
-        // Server-side invalidation can be added later via a Redis token blacklist.
-        return ResponseEntity.ok(new AuthDtos.MessageResponse("Logged out"));
+    public ResponseEntity<ApiResponse<Void>> logout(
+            @AuthenticationPrincipal UserDetails principal) {
+        // Revokes the stored refresh-token jti server-side; access tokens
+        // remain valid until they expire (stateless).
+        authService.logout(principal.getUsername());
+        return ResponseEntity.ok(ApiResponse.message("Logged out"));
     }
 }

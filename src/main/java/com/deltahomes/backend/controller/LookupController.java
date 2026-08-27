@@ -1,6 +1,6 @@
 package com.deltahomes.backend.controller;
 
-import com.deltahomes.backend.dto.common.PaginatedResponse;
+import com.deltahomes.backend.dto.common.ApiResponse;
 import com.deltahomes.backend.dto.summary.CitySummary;
 import com.deltahomes.backend.dto.summary.DistrictSummary;
 import com.deltahomes.backend.dto.summary.FeatureSummary;
@@ -31,42 +31,42 @@ public class LookupController {
     }
 
     @GetMapping("/cities")
-    public ResponseEntity<PaginatedResponse<CitySummary>> cities(@RequestParam(required = false) String q,
+    public ResponseEntity<ApiResponse<java.util.List<CitySummary>>> cities(@RequestParam(required = false) String q,
                                                                  Pageable pageable) {
         Page<CitySummary> cityPage = lookupService.indexCities(q, pageable).map(this::toCitySummary);
-        return ResponseEntity.ok(PaginatedResponse.from(cityPage));
+        return ResponseEntity.ok(ApiResponse.page(cityPage));
     }
 
     @GetMapping("/districts")
-    public ResponseEntity<PaginatedResponse<DistrictSummary>> districts(@RequestParam(required = false) String q,
+    public ResponseEntity<ApiResponse<java.util.List<DistrictSummary>>> districts(@RequestParam(required = false) String q,
                                                                         @RequestParam(required = false) UUID cityId,
                                                                         Pageable pageable) {
         Page<DistrictSummary> districtPage = lookupService.indexDistricts(q, cityId, pageable).map(this::toDistrictSummary);
-        return ResponseEntity.ok(PaginatedResponse.from(districtPage));
+        return ResponseEntity.ok(ApiResponse.page(districtPage));
     }
 
     @GetMapping("/services")
-    public ResponseEntity<PaginatedResponse<ServiceSummary>> services(@RequestParam(required = false) String q,
+    public ResponseEntity<ApiResponse<java.util.List<ServiceSummary>>> services(@RequestParam(required = false) String q,
                                                                       @RequestParam(required = false) String category,
                                                                       Pageable pageable) {
         Page<ServiceSummary> servicePage = lookupService.indexServices(q, category, pageable).map(this::toServiceSummary);
-        return ResponseEntity.ok(PaginatedResponse.from(servicePage));
+        return ResponseEntity.ok(ApiResponse.page(servicePage));
     }
 
     @GetMapping("/features")
-    public ResponseEntity<PaginatedResponse<FeatureSummary>> features(@RequestParam(required = false) String q,
+    public ResponseEntity<ApiResponse<java.util.List<FeatureSummary>>> features(@RequestParam(required = false) String q,
                                                                       Pageable pageable) {
         Page<FeatureSummary> featurePage = lookupService.indexFeatures(q, pageable).map(this::toFeatureSummary);
-        return ResponseEntity.ok(PaginatedResponse.from(featurePage));
+        return ResponseEntity.ok(ApiResponse.page(featurePage));
     }
 
     @GetMapping("/plans")
-    public ResponseEntity<PaginatedResponse<SubscriptionPlanSummary>> plans(@RequestParam(required = false) String q,
+    public ResponseEntity<ApiResponse<java.util.List<SubscriptionPlanSummary>>> plans(@RequestParam(required = false) String q,
                                                                             @RequestParam(required = false) SubscriptionTier tier,
                                                                             @RequestParam(required = false) Boolean isActive,
                                                                             Pageable pageable) {
         Page<SubscriptionPlanSummary> planPage = lookupService.indexPlans(q, tier, isActive, pageable).map(this::toSubscriptionPlanSummary);
-        return ResponseEntity.ok(PaginatedResponse.from(planPage));
+        return ResponseEntity.ok(ApiResponse.page(planPage));
     }
 
     // Mapping methods

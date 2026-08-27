@@ -1,7 +1,7 @@
 package com.deltahomes.backend.controller;
 
 import com.deltahomes.backend.dto.appointment.AppointmentDtos;
-import com.deltahomes.backend.dto.common.PaginatedResponse;
+import com.deltahomes.backend.dto.common.ApiResponse;
 import com.deltahomes.backend.dto.summary.AppointmentSummary;
 import com.deltahomes.backend.entity.communication.Appointment;
 import com.deltahomes.backend.entity.enums.AppointmentStatus;
@@ -17,6 +17,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -33,40 +34,40 @@ public class AppointmentController {
     }
 
     @GetMapping
-    public ResponseEntity<PaginatedResponse<AppointmentSummary>> index(
+    public ResponseEntity<ApiResponse<List<AppointmentSummary>>> index(
             @AuthenticationPrincipal UserDetails principal,
             @RequestParam(required = false) AppointmentStatus status,
             @PageableDefault(size = 20) Pageable pageable) {
         User user = userContext.currentUser(principal);
-        return ResponseEntity.ok(appointmentService.index(user, status, pageable));
+        return ResponseEntity.ok(ApiResponse.page(appointmentService.index(user, status, pageable)));
     }
 
     @PostMapping
-    public ResponseEntity<Appointment> bookAppointment(
+    public ResponseEntity<ApiResponse<Appointment>> bookAppointment(
             @AuthenticationPrincipal UserDetails principal,
             @Valid @RequestBody AppointmentDtos.CreateAppointmentRequest request) {
         User user = userContext.currentUser(principal);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(appointmentService.bookAppointment(user, request));
+                .body(ApiResponse.ok(appointmentService.bookAppointment(user, request)));
     }
 
     @PutMapping("/{id}/status")
-    public ResponseEntity<Appointment> updateAppointmentStatus(
+    public ResponseEntity<ApiResponse<Appointment>> updateAppointmentStatus(
             @AuthenticationPrincipal UserDetails principal,
             @PathVariable UUID id,
             @Valid @RequestBody AppointmentDtos.UpdateAppointmentStatusRequest request) {
         User user = userContext.currentUser(principal);
-        return ResponseEntity.ok(appointmentService.updateStatus(id, request.status(), user));
+        return ResponseEntity.ok(ApiResponse.ok(appointmentService.updateStatus(id, request.status(), user)));
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<Appointment> updateAppointmentStatusLegacy(
+    public ResponseEntity<ApiResponse<Appointment>> updateAppointmentStatusLegacy(
             @AuthenticationPrincipal UserDetails principal,
             @PathVariable UUID id,
             @RequestBody Map<String, String> request) {
         User user = userContext.currentUser(principal);
         AppointmentStatus status = AppointmentStatus.valueOf(
                 request.get("status").toUpperCase());
-        return ResponseEntity.ok(appointmentService.updateStatus(id, status, user));
+        return ResponseEntity.ok(ApiResponse.ok(appointmentService.updateStatus(id, status, user)));
     }
 }
