@@ -9,7 +9,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/deltahome}
     username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:00}
+    password: ${DB_PASSWORD:}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 20
@@ -55,9 +55,9 @@ spring:
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:delta.homes.mans.eg@gmail.com}
-    password: ${MAIL_PASSWORD:pkcr efsb jifw vtig}
-    from: ${MAIL_FROM:delta.homes.mans.eg@gmail.com}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    from: ${MAIL_FROM:}
     properties:
       mail:
         smtp:
@@ -100,7 +100,7 @@ storage:
 
 # JWT
 jwt:
-  secret: ${JWT_SECRET:dHlwZS5hY2Nlc3MtdG9rZW4uZXhhbXBsZS5jb20uZGVsdGFob21lcy5iYWNrZW5k}
+  secret: ${JWT_SECRET:}
   expiration-ms: 3600000          # access token: 1h (short-lived; refresh rotates every use)
   refresh-expiration-ms: 604800000 # refresh token: 7 days (revocable via stored jti)
 
@@ -118,11 +118,11 @@ app:
   admin:
     # Permanent bootstrap admin account. The account is auto-created on startup
     # and `permanent-otp` is always accepted for this phone, for any purpose.
-    phone: ${ADMIN_PHONE:01026962089}
-    name: ${ADMIN_NAME:Delta Admin}
-    email: ${ADMIN_EMAIL:admin@deltahomes.app}
-    password: ${ADMIN_PASSWORD:admin123}
-    permanent-otp: ${ADMIN_PERMANENT_OTP:112231}
+    phone: ${ADMIN_PHONE:}
+    name: ${ADMIN_NAME:}
+    email: ${ADMIN_EMAIL:}
+    password: ${ADMIN_PASSWORD:}
+    permanent-otp: ${ADMIN_PERMANENT_OTP:}
   seed:
     # Demo data seeder: fills every table up to `target` (default 5) realistic
     # records. Idempotent - safe to leave enabled.
